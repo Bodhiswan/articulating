@@ -1143,11 +1143,11 @@ function renderFullGame() {
   } else if (gameState.phase === 'spin-bonus') {
     const spinCategoryLabel = CATEGORY_LABELS[categoryForPosition(currentTeam.position)];
     if (!gameState.spinBonus) {
-      gameStatus.textContent = `${currentTeam.name} landed on ${spinCategoryLabel}. Spin first, then complete that tile.`;
+      gameStatus.textContent = `${currentTeam.name} landed on ${spinCategoryLabel}. Spin bonus first.`;
     } else if (gameState.spinBonus.amount === 0) {
-      gameStatus.textContent = `${currentTeam.name} spun No bonus. Complete ${spinCategoryLabel}.`;
+      gameStatus.textContent = `${currentTeam.name} spun No bonus. End the turn.`;
     } else {
-      gameStatus.textContent = `${currentTeam.name} spun ${gameState.spinBonus.label}. Choose how to use it, then complete the tile.`;
+      gameStatus.textContent = `${currentTeam.name} spun ${gameState.spinBonus.label}. Choose how to use it, then end the turn.`;
     }
     renderBonusActions();
   } else if (gameState.lastRound) {
@@ -1237,7 +1237,7 @@ function renderBonusActions() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'text-button';
-    button.textContent = 'Complete Tile';
+    button.textContent = 'End Turn';
     button.addEventListener('click', applyNoSpinBonus);
     bonusActions.appendChild(button);
     return;
@@ -1265,8 +1265,7 @@ function renderBonusActions() {
 function applyNoSpinBonus() {
   const currentTeam = gameState.teams[gameState.currentTeam];
   gameState.lastRound = { message: `${currentTeam.name} spun no bonus.` };
-  gameState.phase = 'ready';
-  gameState.spinBonus = null;
+  passTurn();
   renderFullGame();
 }
 
@@ -1291,8 +1290,7 @@ function applySpinBonus(mode) {
     gameState.lastRound = { message: `${otherTeam.name} moved back ${amount}.` };
   }
 
-  gameState.phase = 'ready';
-  gameState.spinBonus = null;
+  passTurn();
   renderFullGame();
 }
 
