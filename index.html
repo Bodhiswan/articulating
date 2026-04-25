@@ -249,6 +249,15 @@
   .board-space.action { background: var(--action); }
   .board-space.world { background: var(--world); }
   .board-space.spade { background: var(--spade); }
+  .board-space.control {
+    color: var(--ink);
+    background: #fff;
+    box-shadow: inset 0 0 0 2px rgba(23, 32, 51, 0.18);
+  }
+
+  .board-space.spin {
+    background: linear-gradient(135deg, #f4a261, #e63946);
+  }
 
   .token-stack {
     position: absolute;
@@ -309,13 +318,11 @@
     border-radius: 50%;
     background:
       conic-gradient(
-        var(--object) 0deg 51.43deg,
-        var(--nature) 51.43deg 102.86deg,
-        var(--random) 102.86deg 154.29deg,
-        var(--person) 154.29deg 205.72deg,
-        var(--action) 205.72deg 257.15deg,
-        var(--world) 257.15deg 308.58deg,
-        var(--spade) 308.58deg 360deg
+        #2a9d8f 0deg 108deg,
+        #f4a261 108deg 180deg,
+        #2a9d8f 180deg 232deg,
+        #e63946 232deg 308deg,
+        #111827 308deg 360deg
       );
     box-shadow: 0 10px 24px rgba(23, 32, 51, 0.22);
     transform: rotate(var(--spin-rotation, 0deg));
@@ -342,6 +349,14 @@
   }
 
   .game-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .challenge-actions,
+  .bonus-actions {
     display: flex;
     justify-content: center;
     flex-wrap: wrap;
@@ -572,15 +587,17 @@
           <div id="spinner" class="spinner"></div>
         </div>
         <div class="spinner-copy">
-          <div class="spinner-label">Next subject</div>
-          <div id="spinner-result" class="spinner-result">Spin first</div>
+          <div class="spinner-label">Bonus spinner</div>
+          <div id="spinner-result" class="spinner-result">No bonus</div>
         </div>
       </div>
 
       <div class="game-actions">
-        <button id="spin-subject" class="action-button" type="button">Spin</button>
-        <button id="play-round" class="action-button" type="button" disabled>Play Round</button>
+        <button id="play-round" class="action-button" type="button">Play Object</button>
+        <button id="spin-subject" class="action-button" type="button" disabled>Spin Bonus</button>
       </div>
+      <div id="bonus-actions" class="bonus-actions hidden"></div>
+      <div id="challenge-actions" class="challenge-actions hidden"></div>
     </div>
   </section>
 
@@ -621,9 +638,43 @@
 <script src="words.js?v=atomic-grade12-expanded2"></script>
 <script>
 const ROUND_SECONDS = 32;
-const GAME_SPINNER_SUBJECTS = ['object', 'nature', 'random', 'person', 'action', 'world', 'spade'];
-const BOARD_PATTERN = ['object', 'nature', 'random', 'person', 'action', 'world', 'spade'];
-const BOARD_SPACES = Array.from({ length: 28 }, (_, index) => BOARD_PATTERN[index % BOARD_PATTERN.length]);
+const BOARD_SEGMENTS = [
+  { category: 'nature' },
+  { category: 'random' },
+  { category: 'person' },
+  { category: 'action', special: 'spin' },
+  { category: 'world' },
+  { category: 'object' },
+  { category: 'spade', special: 'control' },
+  { category: 'nature' },
+  { category: 'random' },
+  { category: 'person', special: 'spin' },
+  { category: 'action' },
+  { category: 'world' },
+  { category: 'object' },
+  { category: 'spade', special: 'control' },
+  { category: 'nature' },
+  { category: 'random' },
+  { category: 'person' },
+  { category: 'action', special: 'spin' },
+  { category: 'world' },
+  { category: 'object' },
+  { category: 'spade', special: 'control' },
+  { category: 'nature' },
+  { category: 'random' },
+  { category: 'person', special: 'spin' },
+  { category: 'action' },
+  { category: 'world' },
+  { category: 'spade', special: 'control' },
+  { category: 'object' }
+];
+const SPIN_BONUSES = [
+  { amount: 2, label: '2-place bonus' },
+  { amount: 0, label: 'No bonus' },
+  { amount: 2, label: '2-place bonus' },
+  { amount: 3, label: '3-place bonus' },
+  { amount: 0, label: 'No bonus' }
+];
 
 const SUBJECTS = [
   { id: 'fullgame', label: 'Full Game (Beta)', choices: 0, className: 'fullgame', boardGame: true },
@@ -660,10 +711,11 @@ const gameState = {
     { name: 'Team 2', position: 0 }
   ],
   currentTeam: 0,
-  pendingSubject: null,
   lastRound: null,
   spinnerRotation: 0,
-  winner: null
+  winner: null,
+  phase: 'ready',
+  spinBonus: null
 };
 
 const chooser = document.getElementById('chooser');
@@ -678,6 +730,8 @@ const spinner = document.getElementById('spinner');
 const spinnerResult = document.getElementById('spinner-result');
 const spinSubjectButton = document.getElementById('spin-subject');
 const playRoundButton = document.getElementById('play-round');
+const bonusActions = document.getElementById('bonus-actions');
+const challengeActions = document.getElementById('challenge-actions');
 const resetGameButton = document.getElementById('reset-game');
 const fullGameSubjectsButton = document.getElementById('full-game-subjects');
 const roundTitle = document.getElementById('round-title');
@@ -865,26 +919,37 @@ function renderTeams() {
     card.className = `team-card ${index === gameState.currentTeam && !gameState.winner ? 'current' : ''}`;
     card.innerHTML = `
       <div class="team-label">${team.name}${index === gameState.currentTeam && !gameState.winner ? ' turn' : ''}</div>
-      <div class="team-score">${team.position}/${BOARD_SPACES.length}</div>
+      <div class="team-score">${team.position}/${BOARD_SEGMENTS.length}</div>
     `;
     teamGrid.appendChild(card);
   });
 }
 
 function tokenPosition(team) {
-  return team.position >= BOARD_SPACES.length ? BOARD_SPACES.length + 1 : team.position;
+  return team.position >= BOARD_SEGMENTS.length ? BOARD_SEGMENTS.length + 1 : team.position;
+}
+
+function categoryForPosition(position) {
+  if (position <= 0) return 'object';
+  if (position > BOARD_SEGMENTS.length) return null;
+  return BOARD_SEGMENTS[position - 1].category;
+}
+
+function segmentForPosition(position) {
+  if (position <= 0 || position > BOARD_SEGMENTS.length) return null;
+  return BOARD_SEGMENTS[position - 1];
 }
 
 function renderBoard() {
   boardTrack.innerHTML = '';
   const spaces = [
     { position: 0, label: 'Start', className: 'start' },
-    ...BOARD_SPACES.map((subjectId, index) => ({
+    ...BOARD_SEGMENTS.map((segment, index) => ({
       position: index + 1,
-      label: CATEGORY_LABELS[subjectId].slice(0, 3),
-      className: getSubject(subjectId).className
+      label: segment.special === 'control' ? 'Ctrl' : segment.special === 'spin' ? 'Spin' : CATEGORY_LABELS[segment.category].slice(0, 3),
+      className: `${getSubject(segment.category).className} ${segment.special || ''}`.trim()
     })),
-    { position: BOARD_SPACES.length + 1, label: 'Finish', className: 'finish' }
+    { position: BOARD_SEGMENTS.length + 1, label: 'Finish', className: 'finish' }
   ];
 
   spaces.forEach(space => {
@@ -913,26 +978,50 @@ function renderBoard() {
 }
 
 function renderFullGame() {
+  if (!gameState.winner && gameState.phase === 'ready' && gameState.teams[gameState.currentTeam].position >= BOARD_SEGMENTS.length) {
+    gameState.phase = 'finish';
+  }
+
   renderTeams();
   renderBoard();
 
   const currentTeam = gameState.teams[gameState.currentTeam];
-  const pendingLabel = gameState.pendingSubject ? CATEGORY_LABELS[gameState.pendingSubject] : 'Spin first';
+  const currentCategory = categoryForPosition(currentTeam.position);
+  const categoryLabel = currentCategory ? CATEGORY_LABELS[currentCategory] : 'Finish';
   spinner.style.setProperty('--spin-rotation', `${gameState.spinnerRotation}deg`);
-  spinnerResult.textContent = pendingLabel;
+  spinnerResult.textContent = gameState.spinBonus ? gameState.spinBonus.label : 'No bonus';
+  playRoundButton.textContent = `Play ${categoryLabel}`;
+  bonusActions.classList.add('hidden');
+  bonusActions.innerHTML = '';
+  challengeActions.classList.add('hidden');
+  challengeActions.innerHTML = '';
 
   if (gameState.winner) {
-    gameStatus.textContent = `${gameState.winner} reached finish. Reset to start a new game.`;
+    gameStatus.textContent = `${gameState.winner} won. Reset to start a new game.`;
+  } else if (gameState.phase === 'finish') {
+    gameStatus.textContent = `${currentTeam.name} reached finish. Run the final control challenge.`;
+    renderFinishChallengeActions();
+  } else if (gameState.phase === 'control') {
+    gameStatus.textContent = `${currentTeam.name} landed on Control. First team to guess gets the next turn.`;
+    renderControlChallengeActions();
+  } else if (gameState.phase === 'spin-bonus') {
+    if (!gameState.spinBonus) {
+      gameStatus.textContent = `${currentTeam.name} landed on Spin. Spin for bonus places.`;
+    } else if (gameState.spinBonus.amount === 0) {
+      gameStatus.textContent = `${currentTeam.name} spun No bonus. Continue to the next team.`;
+    } else {
+      gameStatus.textContent = `${currentTeam.name} spun ${gameState.spinBonus.label}. Choose how to use it.`;
+    }
+    renderBonusActions();
   } else if (gameState.lastRound) {
-    gameStatus.textContent = `${gameState.lastRound.team} scored ${gameState.lastRound.score}. ${currentTeam.name} turn. Spin for a subject.`;
-  } else if (gameState.pendingSubject) {
-    gameStatus.textContent = `${currentTeam.name} turn. Play ${pendingLabel}.`;
+    const roundSummary = gameState.lastRound.message || `${gameState.lastRound.team} scored ${gameState.lastRound.score}.`;
+    gameStatus.textContent = `${roundSummary} ${currentTeam.name} is on ${categoryLabel}.`;
   } else {
-    gameStatus.textContent = `${currentTeam.name} turn. Spin for a subject.`;
+    gameStatus.textContent = `${currentTeam.name} is on ${categoryLabel}.`;
   }
 
-  spinSubjectButton.disabled = Boolean(gameState.winner);
-  playRoundButton.disabled = !gameState.pendingSubject || Boolean(gameState.winner);
+  playRoundButton.disabled = gameState.phase !== 'ready' || Boolean(gameState.winner);
+  spinSubjectButton.disabled = gameState.phase !== 'spin-bonus' || Boolean(gameState.spinBonus) || Boolean(gameState.winner);
 }
 
 function showFullGame() {
@@ -946,41 +1035,166 @@ function showFullGame() {
   chooser.classList.add('hidden');
   round.classList.add('hidden');
   fullGame.classList.remove('hidden');
-  subtitle.textContent = 'spin, play a normal round, then move on the board';
+  subtitle.textContent = 'play the board category, then move by your score';
   renderFullGame();
 }
 
 function spinFullGameSubject() {
-  if (gameState.winner) return;
+  if (gameState.winner || gameState.phase !== 'spin-bonus') return;
 
-  const selectedIndex = Math.floor(Math.random() * GAME_SPINNER_SUBJECTS.length);
-  const selectedSubject = GAME_SPINNER_SUBJECTS[selectedIndex];
-  const segmentDegrees = 360 / GAME_SPINNER_SUBJECTS.length;
-  gameState.pendingSubject = selectedSubject;
+  const selectedIndex = Math.floor(Math.random() * SPIN_BONUSES.length);
+  const selectedBonus = SPIN_BONUSES[selectedIndex];
+  const segmentDegrees = 360 / SPIN_BONUSES.length;
+  gameState.spinBonus = selectedBonus;
   gameState.lastRound = null;
-  gameState.spinnerRotation += 720 + (GAME_SPINNER_SUBJECTS.length - selectedIndex) * segmentDegrees - (segmentDegrees / 2);
+  gameState.spinnerRotation += 720 + (SPIN_BONUSES.length - selectedIndex) * segmentDegrees - (segmentDegrees / 2);
   renderFullGame();
 }
 
 function beginFullGameRound() {
-  if (!gameState.pendingSubject || gameState.winner) return;
-  selectSubject(gameState.pendingSubject, { fullGameRound: true });
+  if (gameState.phase !== 'ready' || gameState.winner) return;
+  const team = gameState.teams[gameState.currentTeam];
+  const subjectId = categoryForPosition(team.position);
+  if (!subjectId) return;
+  selectSubject(subjectId, { fullGameRound: true });
 }
 
 function finishFullGameRound() {
   const team = gameState.teams[gameState.currentTeam];
   const roundScore = state.score;
-  team.position = Math.min(BOARD_SPACES.length, team.position + roundScore);
+  const previousPosition = team.position;
+  team.position = Math.min(BOARD_SEGMENTS.length, team.position + roundScore);
   gameState.lastRound = { team: team.name, score: roundScore };
-  gameState.pendingSubject = null;
+  gameState.spinBonus = null;
 
-  if (team.position >= BOARD_SPACES.length) {
-    gameState.winner = team.name;
+  if (team.position >= BOARD_SEGMENTS.length) {
+    gameState.phase = 'finish';
+  } else if (roundScore > 0) {
+    const landedSegment = segmentForPosition(team.position);
+    if (landedSegment && landedSegment.special === 'control') {
+      gameState.phase = 'control';
+    } else if (landedSegment && landedSegment.special === 'spin') {
+      gameState.phase = 'spin-bonus';
+    } else {
+      passTurn();
+    }
   } else {
-    gameState.currentTeam = (gameState.currentTeam + 1) % gameState.teams.length;
+    team.position = previousPosition;
+    passTurn();
   }
 
   showFullGame();
+}
+
+function passTurn() {
+  gameState.currentTeam = (gameState.currentTeam + 1) % gameState.teams.length;
+  gameState.phase = 'ready';
+  gameState.spinBonus = null;
+}
+
+function renderBonusActions() {
+  if (gameState.phase !== 'spin-bonus' || !gameState.spinBonus) return;
+
+  bonusActions.classList.remove('hidden');
+  if (gameState.spinBonus.amount === 0) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'text-button';
+    button.textContent = 'Continue';
+    button.addEventListener('click', applyNoSpinBonus);
+    bonusActions.appendChild(button);
+    return;
+  }
+
+  const currentTeam = gameState.teams[gameState.currentTeam];
+  const otherTeamIndex = (gameState.currentTeam + 1) % gameState.teams.length;
+  const otherTeam = gameState.teams[otherTeamIndex];
+
+  const forwardButton = document.createElement('button');
+  forwardButton.type = 'button';
+  forwardButton.className = 'text-button';
+  forwardButton.textContent = `${currentTeam.name} +${gameState.spinBonus.amount}`;
+  forwardButton.addEventListener('click', () => applySpinBonus('forward'));
+
+  const backButton = document.createElement('button');
+  backButton.type = 'button';
+  backButton.className = 'text-button';
+  backButton.textContent = `${otherTeam.name} -${gameState.spinBonus.amount}`;
+  backButton.addEventListener('click', () => applySpinBonus('back'));
+
+  bonusActions.append(forwardButton, backButton);
+}
+
+function applyNoSpinBonus() {
+  passTurn();
+  renderFullGame();
+}
+
+function applySpinBonus(mode) {
+  if (!gameState.spinBonus) return;
+
+  const amount = gameState.spinBonus.amount;
+  const currentTeam = gameState.teams[gameState.currentTeam];
+  const otherTeam = gameState.teams[(gameState.currentTeam + 1) % gameState.teams.length];
+
+  if (mode === 'forward') {
+    currentTeam.position = Math.min(BOARD_SEGMENTS.length, currentTeam.position + amount);
+    if (currentTeam.position >= BOARD_SEGMENTS.length) {
+      gameState.phase = 'finish';
+      gameState.spinBonus = null;
+      renderFullGame();
+      return;
+    }
+  } else {
+    otherTeam.position = Math.max(0, otherTeam.position - amount);
+  }
+
+  passTurn();
+  renderFullGame();
+}
+
+function renderControlChallengeActions() {
+  challengeActions.classList.remove('hidden');
+  gameState.teams.forEach((team, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'text-button';
+    button.textContent = `${team.name} first`;
+    button.addEventListener('click', () => resolveControlChallenge(index));
+    challengeActions.appendChild(button);
+  });
+}
+
+function resolveControlChallenge(teamIndex) {
+  gameState.currentTeam = teamIndex;
+  gameState.lastRound = { message: `${gameState.teams[teamIndex].name} won Control.` };
+  gameState.phase = 'ready';
+  renderFullGame();
+}
+
+function renderFinishChallengeActions() {
+  challengeActions.classList.remove('hidden');
+  const currentTeam = gameState.teams[gameState.currentTeam];
+
+  const winButton = document.createElement('button');
+  winButton.type = 'button';
+  winButton.className = 'action-button';
+  winButton.textContent = `${currentTeam.name} won`;
+  winButton.addEventListener('click', () => {
+    gameState.winner = currentTeam.name;
+    renderFullGame();
+  });
+
+  const missButton = document.createElement('button');
+  missButton.type = 'button';
+  missButton.className = 'text-button';
+  missButton.textContent = 'No win';
+  missButton.addEventListener('click', () => {
+    passTurn();
+    renderFullGame();
+  });
+
+  challengeActions.append(winButton, missButton);
 }
 
 function resetFullGame() {
@@ -988,10 +1202,11 @@ function resetFullGame() {
     team.position = 0;
   });
   gameState.currentTeam = 0;
-  gameState.pendingSubject = null;
   gameState.lastRound = null;
   gameState.spinnerRotation = 0;
   gameState.winner = null;
+  gameState.phase = 'ready';
+  gameState.spinBonus = null;
   renderFullGame();
 }
 
