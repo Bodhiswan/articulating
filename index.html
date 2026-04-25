@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#16213e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Articulating</title>
+<style>
+  :root {
+    --object: #e63946;
+    --nature: #2a9d8f;
+    --random: #f4a261;
+    --person: #e76f51;
+    --world: #264653;
+    --action: #9b5de5;
+    --spade: #111827;
+    --ink: #172033;
+    --paper: #fffaf2;
+    --muted: #a6adbc;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bot: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  html, body {
+    min-height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background:
+      radial-gradient(circle at 20% 12%, rgba(244, 162, 97, 0.22), transparent 26%),
+      radial-gradient(circle at 82% 0%, rgba(42, 157, 143, 0.2), transparent 28%),
+      linear-gradient(135deg, #17162b 0%, #16213e 100%);
+    color: #fff;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(16px + var(--safe-top)) 16px calc(16px + var(--safe-bot));
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 620px;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 7vw, 2.75rem);
+    font-weight: 900;
+    letter-spacing: 2px;
+    margin-bottom: 6px;
+    background: linear-gradient(90deg, #e63946, #f4a261, #2a9d8f, #9b5de5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .subtitle {
+    color: #c7ccda;
+    font-size: clamp(0.82rem, 3vw, 0.95rem);
+    margin-bottom: 18px;
+  }
+
+  .panel {
+    background: rgba(255, 250, 242, 0.97);
+    color: var(--ink);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 16px;
+    padding: clamp(16px, 4.2vw, 26px);
+    box-shadow: 0 18px 48px rgba(0,0,0,0.45);
+  }
+
+  .section-title {
+    color: #596174;
+    font-size: clamp(0.74rem, 2.7vw, 0.82rem);
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  .subject-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .subject {
+    display: flex;
+    min-height: 78px;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: space-between;
+    border: none;
+    border-radius: 10px;
+    padding: 13px;
+    color: #fff;
+    cursor: pointer;
+    text-align: left;
+    touch-action: manipulation;
+    box-shadow: 0 8px 20px rgba(23, 32, 51, 0.16);
+    transition: transform 0.08s ease, filter 0.2s ease;
+  }
+
+  .subject:focus-visible,
+  .action-button:focus-visible,
+  .word-button:focus-visible,
+  .text-button:focus-visible {
+    outline: 3px solid rgba(255, 255, 255, 0.86);
+    outline-offset: 3px;
+  }
+
+  .subject:active,
+  .word-button:active,
+  .action-button:active,
+  .text-button:active { transform: translateY(1px) scale(0.98); }
+
+  @media (hover: hover) {
+    .subject:hover,
+    .word-button:hover,
+    .action-button:hover,
+    .text-button:hover { filter: brightness(1.07); }
+  }
+
+  .subject-name {
+    font-size: clamp(1rem, 4vw, 1.2rem);
+    font-weight: 850;
+    line-height: 1.05;
+  }
+
+  .subject-count {
+    opacity: 0.82;
+    font-size: clamp(0.72rem, 2.7vw, 0.8rem);
+    font-weight: 750;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+  }
+
+  .subject.object { background: var(--object); }
+  .subject.nature { background: var(--nature); }
+  .subject.random { background: var(--random); }
+  .subject.person { background: var(--person); }
+  .subject.world  { background: var(--world); }
+  .subject.action { background: var(--action); }
+  .subject.spade { background: var(--spade); }
+
+  .round-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .round-topbar {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 14px;
+  }
+
+  .round-kicker {
+    color: #687083;
+    font-size: clamp(0.72rem, 2.8vw, 0.8rem);
+    font-weight: 800;
+    letter-spacing: 1px;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .round-title {
+    font-size: clamp(1.45rem, 6vw, 2rem);
+    font-weight: 900;
+    text-align: left;
+  }
+
+  .timer {
+    display: grid;
+    min-width: 84px;
+    min-height: 84px;
+    place-items: center;
+    border-radius: 50%;
+    background: #172033;
+    color: #fff;
+    font-size: clamp(1.55rem, 7vw, 2.1rem);
+    font-weight: 900;
+    font-variant-numeric: tabular-nums;
+    box-shadow: inset 0 0 0 5px rgba(255,255,255,0.12);
+  }
+
+  .timer.warning { background: #e63946; }
+
+  .score-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .stat {
+    border-radius: 10px;
+    background: rgba(23, 32, 51, 0.08);
+    padding: 10px;
+    text-align: left;
+  }
+
+  .stat-label {
+    color: #687083;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+  }
+
+  .stat-value {
+    margin-top: 3px;
+    color: var(--ink);
+    font-size: 1.45rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .word-list {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .word-button {
+    width: 100%;
+    min-height: 58px;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink);
+    cursor: pointer;
+    font-size: clamp(1rem, 4.5vw, 1.25rem);
+    font-weight: 800;
+    line-height: 1.2;
+    padding: 13px 14px;
+    touch-action: manipulation;
+    word-break: break-word;
+    box-shadow: 0 6px 18px rgba(23, 32, 51, 0.1);
+    transition: transform 0.08s ease, border-color 0.2s ease, opacity 0.2s ease;
+  }
+
+  .word-button.ready {
+    color: #7b8292;
+    background: rgba(255,255,255,0.72);
+    box-shadow: none;
+  }
+
+  .word-button:disabled {
+    cursor: default;
+    opacity: 0.62;
+    transform: none;
+  }
+
+  .round-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .action-button,
+  .text-button {
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: clamp(0.86rem, 3.5vw, 0.95rem);
+    font-weight: 850;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    touch-action: manipulation;
+    transition: transform 0.08s ease, filter 0.2s ease, opacity 0.2s ease;
+  }
+
+  .action-button {
+    min-height: 52px;
+    min-width: 150px;
+    padding: 15px 28px;
+    background: linear-gradient(90deg, #e63946, #9b5de5);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(155, 93, 229, 0.34);
+  }
+
+  .text-button {
+    min-height: 46px;
+    padding: 12px 18px;
+    background: rgba(23, 32, 51, 0.09);
+    color: var(--ink);
+  }
+
+  .text-button:disabled {
+    cursor: default;
+    opacity: 0.45;
+    transform: none;
+  }
+
+  .hidden { display: none; }
+
+  .empty-note {
+    color: #687083;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 430px) {
+    .subject-grid { grid-template-columns: 1fr; }
+    .round-header { align-items: flex-start; }
+    .timer { min-width: 72px; min-height: 72px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Articulating</h1>
+  <div class="subtitle" id="subtitle">choose a subject to start a round</div>
+
+  <section id="chooser" class="panel" aria-labelledby="chooser-title">
+    <div id="chooser-title" class="section-title">Subject</div>
+    <div class="subject-grid" id="subject-grid"></div>
+  </section>
+
+  <section id="round" class="panel hidden" aria-live="polite">
+    <div class="round-topbar">
+      <button id="change-subject" class="text-button" type="button">Subjects</button>
+    </div>
+
+    <div class="round-header">
+      <div>
+        <div class="round-kicker">Current subject</div>
+        <div class="round-title" id="round-title">Object</div>
+      </div>
+      <div class="timer" id="timer">32</div>
+    </div>
+
+    <div class="score-row">
+      <div class="stat">
+        <div class="stat-label">Score</div>
+        <div class="stat-value" id="score">0</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Choices</div>
+        <div class="stat-value" id="choice-count">0</div>
+      </div>
+    </div>
+
+    <div id="word-list" class="word-list"></div>
+    <div id="round-note" class="empty-note">Tap start when your team is ready.</div>
+
+    <div class="round-actions">
+      <button id="start" class="action-button" type="button">Start</button>
+      <button id="undo" class="text-button" type="button" disabled>Undo</button>
+    </div>
+  </section>
+</div>
+
+<script src="words.js?v=atomic-grade12-expanded2"></script>
+<script>
+const ROUND_SECONDS = 32;
+
+const SUBJECTS = [
+  { id: 'object', label: 'Object', choices: 2, className: 'object' },
+  { id: 'nature', label: 'Nature', choices: 2, className: 'nature' },
+  { id: 'random', label: 'Random', choices: 2, className: 'random' },
+  { id: 'person', label: 'Person', choices: 4, className: 'person' },
+  { id: 'action', label: 'Action', choices: 2, className: 'action' },
+  { id: 'world', label: 'World', choices: 3, className: 'world' },
+  { id: 'spade', label: 'Spade Round', choices: 1, className: 'spade', randomCategory: true }
+];
+
+const STORAGE_KEY = 'articulatingDeckStateV6';
+const WORD_CATEGORIES = Object.keys(WORDS);
+const orderCache = new Map();
+
+const state = {
+  subject: null,
+  score: 0,
+  seconds: ROUND_SECONDS,
+  running: false,
+  timerId: null,
+  words: [],
+  lastAction: null
+};
+
+const chooser = document.getElementById('chooser');
+const round = document.getElementById('round');
+const subjectGrid = document.getElementById('subject-grid');
+const subtitle = document.getElementById('subtitle');
+const roundTitle = document.getElementById('round-title');
+const timer = document.getElementById('timer');
+const score = document.getElementById('score');
+const choiceCount = document.getElementById('choice-count');
+const wordList = document.getElementById('word-list');
+const roundNote = document.getElementById('round-note');
+const startButton = document.getElementById('start');
+const undoButton = document.getElementById('undo');
+const changeSubjectButton = document.getElementById('change-subject');
+
+function createSeed() {
+  if (window.crypto && window.crypto.getRandomValues) {
+    const values = new Uint32Array(4);
+    window.crypto.getRandomValues(values);
+    return Array.from(values, value => value.toString(36)).join('-');
+  }
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+}
+
+function defaultDeckState(seed = createSeed()) {
+  return {
+    seed,
+    randomCounter: 0,
+    decks: Object.fromEntries(WORD_CATEGORIES.map(category => [category, { index: 0, cycle: 0 }]))
+  };
+}
+
+function normalizeDeckState(saved) {
+  const deckState = saved && typeof saved === 'object' ? saved : {};
+  const normalized = defaultDeckState(typeof deckState.seed === 'string' ? deckState.seed : createSeed());
+  normalized.randomCounter = Number.isInteger(deckState.randomCounter) && deckState.randomCounter >= 0
+    ? deckState.randomCounter
+    : 0;
+
+  for (const category of WORD_CATEGORIES) {
+    const savedDeck = deckState.decks && deckState.decks[category];
+    if (!savedDeck) continue;
+
+    const maxIndex = WORDS[category].length - 1;
+    normalized.decks[category] = {
+      index: Number.isInteger(savedDeck.index) ? Math.min(Math.max(savedDeck.index, 0), maxIndex) : 0,
+      cycle: Number.isInteger(savedDeck.cycle) && savedDeck.cycle >= 0 ? savedDeck.cycle : 0
+    };
+  }
+
+  return normalized;
+}
+
+function loadDeckState() {
+  try {
+    return normalizeDeckState(JSON.parse(localStorage.getItem(STORAGE_KEY)));
+  } catch {
+    return defaultDeckState();
+  }
+}
+
+const deckState = loadDeckState();
+
+function saveDeckState() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(deckState));
+  } catch {
+    // The game still works if storage is unavailable; it just cannot resume the same deck later.
+  }
+}
+
+function hashText(text) {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededRandom(seedText) {
+  let value = hashText(seedText);
+  value += 0x6D2B79F5;
+  value = Math.imul(value ^ value >>> 15, value | 1);
+  value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+  return ((value ^ value >>> 14) >>> 0) / 4294967296;
+}
+
+function seededShuffle(items, seedText) {
+  const shuffled = [...items];
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(seededRandom(`${seedText}:${index}`) * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+}
+
+function categoryOrder(category, cycle) {
+  const cacheKey = `${deckState.seed}:${category}:${cycle}:${WORDS[category].length}`;
+  if (!orderCache.has(cacheKey)) {
+    orderCache.set(cacheKey, seededShuffle(WORDS[category], `${deckState.seed}:${category}:${cycle}`));
+  }
+  return orderCache.get(cacheKey);
+}
+
+function warmDeckOrders(subject) {
+  const categories = subject.randomCategory ? WORD_CATEGORIES : [subject.id];
+  categories.forEach(category => {
+    const deck = deckState.decks[category];
+    categoryOrder(category, deck.cycle);
+  });
+}
+
+function pickSubjectCategory(subject) {
+  if (!subject.randomCategory) return subject.id;
+  const category = WORD_CATEGORIES[Math.floor(seededRandom(`${deckState.seed}:spade:${deckState.randomCounter}`) * WORD_CATEGORIES.length)];
+  deckState.randomCounter += 1;
+  return category;
+}
+
+function drawDeckWord(category) {
+  const deck = deckState.decks[category];
+  const order = categoryOrder(category, deck.cycle);
+  const text = order[deck.index];
+  deck.index += 1;
+
+  if (deck.index >= order.length) {
+    deck.index = 0;
+    deck.cycle += 1;
+  }
+
+  saveDeckState();
+  return { text, category };
+}
+
+function drawWord(subject, usedWords = []) {
+  const category = pickSubjectCategory(subject);
+  let nextWord = drawDeckWord(category);
+  let guard = WORDS[category].length;
+
+  while (usedWords.includes(nextWord.text) && guard > 0) {
+    nextWord = drawDeckWord(category);
+    guard -= 1;
+  }
+
+  return nextWord;
+}
+
+function drawWords(subject) {
+  const nextWords = [];
+  for (let index = 0; index < subject.choices; index++) {
+    nextWords.push(drawWord(subject, nextWords.map(item => item.text)));
+  }
+  return nextWords;
+}
+
+function renderSubjects() {
+  subjectGrid.innerHTML = '';
+  SUBJECTS.forEach(subject => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `subject ${subject.className}`;
+    button.dataset.subject = subject.id;
+    const countLabel = `${subject.choices} ${subject.choices === 1 ? 'choice' : 'choices'}`;
+    button.innerHTML = `
+      <span class="subject-name">${subject.label}</span>
+      <span class="subject-count">${subject.randomCategory ? `Random · ${countLabel}` : countLabel}</span>
+    `;
+    button.addEventListener('click', () => selectSubject(subject.id));
+    subjectGrid.appendChild(button);
+  });
+}
+
+function selectSubject(subjectId) {
+  const subject = SUBJECTS.find(item => item.id === subjectId);
+  if (!subject) return;
+
+  stopTimer();
+  state.subject = subject;
+  state.score = 0;
+  state.seconds = ROUND_SECONDS;
+  state.running = false;
+  state.words = Array.from({ length: subject.choices }, () => null);
+  state.lastAction = null;
+
+  chooser.classList.add('hidden');
+  round.classList.remove('hidden');
+  subtitle.textContent = 'tap correct words to score and replace them';
+  startButton.textContent = 'Start';
+  startButton.disabled = false;
+  roundNote.textContent = 'Tap start when your team is ready.';
+  renderRound();
+}
+
+function renderRound() {
+  if (!state.subject) return;
+
+  roundTitle.textContent = state.subject.label;
+  renderTimer();
+  renderScore();
+  renderWords();
+}
+
+function renderTimer() {
+  timer.textContent = state.seconds;
+  timer.classList.toggle('warning', state.seconds <= 10 && state.running);
+}
+
+function renderScore() {
+  score.textContent = state.score;
+  choiceCount.textContent = state.subject.choices;
+  undoButton.disabled = !state.lastAction;
+}
+
+function renderWords() {
+  wordList.innerHTML = '';
+  state.words.forEach((word, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `word-button ${state.running ? '' : 'ready'}`;
+    button.textContent = state.running ? word.text : 'Ready';
+    button.disabled = !state.running;
+    button.setAttribute('aria-label', state.running ? `Score ${word.text}` : 'Word hidden until round starts');
+    button.addEventListener('click', () => scoreWord(index));
+    wordList.appendChild(button);
+  });
+}
+
+function startRound() {
+  if (!state.subject || state.running) return;
+
+  warmDeckOrders(state.subject);
+  state.running = true;
+  state.seconds = ROUND_SECONDS;
+  state.score = 0;
+  state.lastAction = null;
+  state.words = drawWords(state.subject);
+  startButton.disabled = true;
+  roundNote.textContent = 'Click a word when your team gets it right.';
+  renderRound();
+
+  state.timerId = window.setInterval(() => {
+    state.seconds -= 1;
+    if (state.seconds <= 0) {
+      endRound();
+      return;
+    }
+    renderTimer();
+  }, 1000);
+}
+
+function endRound() {
+  stopTimer();
+  state.running = false;
+  state.seconds = 0;
+  state.lastAction = null;
+  startButton.disabled = false;
+  startButton.textContent = 'Restart';
+  roundNote.textContent = 'Time. Start again or choose another subject.';
+  renderRound();
+}
+
+function stopTimer() {
+  if (state.timerId) {
+    window.clearInterval(state.timerId);
+    state.timerId = null;
+  }
+}
+
+function scoreWord(index) {
+  if (!state.running || !state.words[index]) return;
+
+  const previousWord = state.words[index];
+  const randomCounterBefore = deckState.randomCounter;
+  const nextWord = drawWord(state.subject, state.words.map(item => item.text));
+  state.words[index] = nextWord;
+  state.score += 1;
+  state.lastAction = {
+    index,
+    previousWord,
+    replacementWord: nextWord,
+    randomCounterBefore
+  };
+  renderRound();
+}
+
+function rewindDeckWord(word) {
+  if (!word || !deckState.decks[word.category]) return;
+
+  const deck = deckState.decks[word.category];
+  if (deck.index === 0) {
+    deck.cycle = Math.max(0, deck.cycle - 1);
+    deck.index = WORDS[word.category].length - 1;
+  } else {
+    deck.index -= 1;
+  }
+
+  saveDeckState();
+}
+
+function undoLastScore() {
+  if (!state.lastAction) return;
+
+  const { index, previousWord, replacementWord, randomCounterBefore } = state.lastAction;
+  if (Number.isInteger(randomCounterBefore)) {
+    deckState.randomCounter = randomCounterBefore;
+  }
+  rewindDeckWord(replacementWord);
+  state.words[index] = previousWord;
+  state.score = Math.max(0, state.score - 1);
+  state.lastAction = null;
+  renderRound();
+}
+
+function showSubjects() {
+  stopTimer();
+  state.subject = null;
+  state.running = false;
+  state.lastAction = null;
+  chooser.classList.remove('hidden');
+  round.classList.add('hidden');
+  subtitle.textContent = 'choose a subject to start a round';
+}
+
+startButton.addEventListener('click', startRound);
+undoButton.addEventListener('click', undoLastScore);
+changeSubjectButton.addEventListener('click', showSubjects);
+
+renderSubjects();
+</script>
+</body>
+</html>
