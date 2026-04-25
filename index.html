@@ -824,6 +824,7 @@ const state = {
   words: [],
   lastAction: null,
   fullGameRound: false,
+  finalSpadeRound: false,
   roundComplete: false,
   scoredLog: [],
   auditOpen: false
@@ -1123,10 +1124,11 @@ function renderFullGame() {
 
   const currentTeam = gameState.teams[gameState.currentTeam];
   const currentCategory = categoryForPosition(currentTeam.position);
-  const categoryLabel = currentCategory ? CATEGORY_LABELS[currentCategory] : 'Finish';
+  const isFinishPhase = gameState.phase === 'finish';
+  const categoryLabel = isFinishPhase ? 'Finish' : currentCategory ? CATEGORY_LABELS[currentCategory] : 'Finish';
   spinner.style.setProperty('--spin-rotation', `${gameState.spinnerRotation}deg`);
   spinnerResult.textContent = gameState.spinBonus ? gameState.spinBonus.label : 'No bonus';
-  playRoundButton.textContent = `Play ${categoryLabel}`;
+  playRoundButton.textContent = isFinishPhase ? 'Play Spade Round' : `Play ${categoryLabel}`;
   bonusActions.classList.add('hidden');
   bonusActions.innerHTML = '';
   challengeActions.classList.add('hidden');
@@ -1135,8 +1137,7 @@ function renderFullGame() {
   if (gameState.winner) {
     gameStatus.textContent = `${gameState.winner} won. Reset to start a new game.`;
   } else if (gameState.phase === 'finish') {
-    gameStatus.textContent = `${currentTeam.name} reached finish. Run the final control challenge.`;
-    renderFinishChallengeActions();
+    gameStatus.textContent = `${currentTeam.name} is at Finish. Play a Spade Round to win.`;
   } else if (gameState.phase === 'control') {
     gameStatus.textContent = `${currentTeam.name} landed on Control. First team to guess gets the next turn.`;
     renderControlChallengeActions();
@@ -1157,7 +1158,7 @@ function renderFullGame() {
     gameStatus.textContent = `${currentTeam.name} is on ${categoryLabel}.`;
   }
 
-  playRoundButton.disabled = gameState.phase !== 'ready' || Boolean(gameState.winner);
+  playRoundButton.disabled = !['ready', 'finish'].includes(gameState.phase) || Boolean(gameState.winner);
   spinSubjectButton.disabled = gameState.phase !== 'spin-bonus' || Boolean(gameState.spinBonus) || Boolean(gameState.winner);
 }
 
@@ -1168,6 +1169,7 @@ function showFullGame() {
   state.running = false;
   state.lastAction = null;
   state.fullGameRound = false;
+  state.finalSpadeRound = false;
   state.roundComplete = false;
   chooser.classList.add('hidden');
   round.classList.add('hidden');
@@ -1189,7 +1191,14 @@ function spinFullGameSubject() {
 }
 
 function beginFullGameRound() {
-  if (gameState.phase !== 'ready' || gameState.winner) return;
+  if (gameState.winner) return;
+
+  if (gameState.phase === 'finish') {
+    selectSubject('spade', { fullGameRound: true, finalSpadeRound: true });
+    return;
+  }
+
+  if (gameState.phase !== 'ready') return;
   const team = gameState.teams[gameState.currentTeam];
   const subjectId = categoryForPosition(team.position);
   if (!subjectId) return;
@@ -1199,6 +1208,20 @@ function beginFullGameRound() {
 function finishFullGameRound() {
   const team = gameState.teams[gameState.currentTeam];
   const roundScore = state.score;
+
+  if (state.finalSpadeRound) {
+    gameState.spinBonus = null;
+    if (roundScore > 0) {
+      gameState.winner = team.name;
+      gameState.lastRound = { message: `${team.name} scored ${roundScore} in the final Spade Round.` };
+    } else {
+      gameState.lastRound = { message: `${team.name} missed the final Spade Round.` };
+      passTurn();
+    }
+    showFullGame();
+    return;
+  }
+
   const previousPosition = team.position;
   team.position = Math.min(BOARD_SEGMENTS.length, team.position + roundScore);
   gameState.lastRound = { team: team.name, score: roundScore };
@@ -1313,31 +1336,6 @@ function resolveControlChallenge(teamIndex) {
   renderFullGame();
 }
 
-function renderFinishChallengeActions() {
-  challengeActions.classList.remove('hidden');
-  const currentTeam = gameState.teams[gameState.currentTeam];
-
-  const winButton = document.createElement('button');
-  winButton.type = 'button';
-  winButton.className = 'action-button';
-  winButton.textContent = `${currentTeam.name} won`;
-  winButton.addEventListener('click', () => {
-    gameState.winner = currentTeam.name;
-    renderFullGame();
-  });
-
-  const missButton = document.createElement('button');
-  missButton.type = 'button';
-  missButton.className = 'text-button';
-  missButton.textContent = 'No win';
-  missButton.addEventListener('click', () => {
-    passTurn();
-    renderFullGame();
-  });
-
-  challengeActions.append(winButton, missButton);
-}
-
 function resetFullGame() {
   gameState.teams.forEach(team => {
     team.position = 0;
@@ -1348,6 +1346,7 @@ function resetFullGame() {
   gameState.winner = null;
   gameState.phase = 'ready';
   gameState.spinBonus = null;
+  state.finalSpadeRound = false;
   renderFullGame();
 }
 
@@ -1368,6 +1367,7 @@ function selectSubject(subjectId, options = {}) {
   state.words = Array.from({ length: subject.choices }, () => null);
   state.lastAction = null;
   state.fullGameRound = Boolean(options.fullGameRound);
+  state.finalSpadeRound = Boolean(options.finalSpadeRound);
   state.roundComplete = false;
   state.scoredLog = [];
   state.auditOpen = false;
@@ -1375,11 +1375,15 @@ function selectSubject(subjectId, options = {}) {
   chooser.classList.add('hidden');
   fullGame.classList.add('hidden');
   round.classList.remove('hidden');
-  subtitle.textContent = state.fullGameRound ? `${gameState.teams[gameState.currentTeam].name} round` : 'tap correct words to score and replace them';
+  subtitle.textContent = state.fullGameRound
+    ? state.finalSpadeRound
+      ? `${gameState.teams[gameState.currentTeam].name} final Spade Round`
+      : `${gameState.teams[gameState.currentTeam].name} round`
+    : 'tap correct words to score and replace them';
   changeSubjectButton.textContent = state.fullGameRound ? 'Board' : 'Subjects';
   startButton.textContent = 'Start';
   startButton.disabled = false;
-  roundNote.textContent = 'Tap start when your team is ready.';
+  roundNote.textContent = state.finalSpadeRound ? 'Score at least one to win.' : 'Tap start when your team is ready.';
   renderRound();
 }
 
@@ -1473,8 +1477,15 @@ function refreshRoundScoreText() {
 
   if (state.fullGameRound) {
     const teamName = gameState.teams[gameState.currentTeam].name;
-    startButton.textContent = `Add ${state.score}`;
-    roundNote.textContent = `Time. Add ${state.score} to ${teamName}'s board position.`;
+    if (state.finalSpadeRound) {
+      startButton.textContent = state.score > 0 ? 'Win Game' : 'Pass Turn';
+      roundNote.textContent = state.score > 0
+        ? `Time. ${teamName} scored ${state.score} in the final Spade Round.`
+        : `Time. ${teamName} did not score in the final Spade Round.`;
+    } else {
+      startButton.textContent = `Add ${state.score}`;
+      roundNote.textContent = `Time. Add ${state.score} to ${teamName}'s board position.`;
+    }
   }
 }
 
@@ -1523,8 +1534,15 @@ function endRound() {
   startButton.disabled = false;
   if (state.fullGameRound) {
     const teamName = gameState.teams[gameState.currentTeam].name;
-    startButton.textContent = `Add ${state.score}`;
-    roundNote.textContent = `Time. Add ${state.score} to ${teamName}'s board position.`;
+    if (state.finalSpadeRound) {
+      startButton.textContent = state.score > 0 ? 'Win Game' : 'Pass Turn';
+      roundNote.textContent = state.score > 0
+        ? `Time. ${teamName} scored ${state.score} in the final Spade Round.`
+        : `Time. ${teamName} did not score in the final Spade Round.`;
+    } else {
+      startButton.textContent = `Add ${state.score}`;
+      roundNote.textContent = `Time. Add ${state.score} to ${teamName}'s board position.`;
+    }
   } else {
     startButton.textContent = 'Restart';
     roundNote.textContent = 'Time. Start again or choose another subject.';
@@ -1617,6 +1635,7 @@ function showSubjects() {
   state.running = false;
   state.lastAction = null;
   state.fullGameRound = false;
+  state.finalSpadeRound = false;
   state.roundComplete = false;
   state.scoredLog = [];
   state.auditOpen = false;
