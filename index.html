@@ -1559,28 +1559,15 @@ function scoreWord(index) {
   renderRound();
 }
 
-function rewindDeckWord(word) {
-  if (!word || !deckState.decks[word.category]) return;
-
-  const deck = deckState.decks[word.category];
-  if (deck.index === 0) {
-    deck.cycle = Math.max(0, deck.cycle - 1);
-    deck.index = WORDS[word.category].length - 1;
-  } else {
-    deck.index -= 1;
-  }
-
-  saveDeckState();
-}
-
 function undoLastScore() {
   if (!state.lastAction) return;
 
-  const { index, previousWord, replacementWord, randomCounterBefore, logEntryId } = state.lastAction;
+  const { index, previousWord, randomCounterBefore, logEntryId } = state.lastAction;
   if (Number.isInteger(randomCounterBefore)) {
     deckState.randomCounter = randomCounterBefore;
+    saveDeckState();
   }
-  rewindDeckWord(replacementWord);
+  // Keep the replacement card consumed so undo cannot replay the same card.
   state.words[index] = previousWord;
   state.score = Math.max(0, state.score - 1);
   markAuditEntryRemoved(logEntryId);
