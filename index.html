@@ -255,10 +255,6 @@
     box-shadow: inset 0 0 0 2px rgba(23, 32, 51, 0.18);
   }
 
-  .board-space.spin {
-    background: linear-gradient(135deg, #f4a261, #e63946);
-  }
-
   .token-stack {
     position: absolute;
     inset: 3px;
@@ -769,13 +765,6 @@ const BOARD_SEGMENTS = [
   { category: 'nature' },
   { category: 'random' },
   { category: 'person' },
-  { category: 'action', special: 'spin' },
-  { category: 'world' },
-  { category: 'object' },
-  { category: 'spade', special: 'control' },
-  { category: 'nature' },
-  { category: 'random' },
-  { category: 'person', special: 'spin' },
   { category: 'action' },
   { category: 'world' },
   { category: 'object' },
@@ -783,13 +772,20 @@ const BOARD_SEGMENTS = [
   { category: 'nature' },
   { category: 'random' },
   { category: 'person' },
-  { category: 'action', special: 'spin' },
+  { category: 'action' },
   { category: 'world' },
   { category: 'object' },
   { category: 'spade', special: 'control' },
   { category: 'nature' },
   { category: 'random' },
-  { category: 'person', special: 'spin' },
+  { category: 'person' },
+  { category: 'action' },
+  { category: 'world' },
+  { category: 'object' },
+  { category: 'spade', special: 'control' },
+  { category: 'nature' },
+  { category: 'random' },
+  { category: 'person' },
   { category: 'action' },
   { category: 'world' },
   { category: 'spade', special: 'control' },
@@ -1076,13 +1072,17 @@ function segmentForPosition(position) {
   return BOARD_SEGMENTS[position - 1];
 }
 
+function isSpinCategory(category) {
+  return category === 'action' || category === 'random';
+}
+
 function renderBoard() {
   boardTrack.innerHTML = '';
   const spaces = [
     { position: 0, label: 'Start', className: 'start' },
     ...BOARD_SEGMENTS.map((segment, index) => ({
       position: index + 1,
-      label: segment.special === 'control' ? 'Ctrl' : segment.special === 'spin' ? 'Spin' : CATEGORY_LABELS[segment.category].slice(0, 3),
+      label: segment.special === 'control' ? 'Ctrl' : CATEGORY_LABELS[segment.category].slice(0, 3),
       className: `${getSubject(segment.category).className} ${segment.special || ''}`.trim()
     })),
     { position: BOARD_SEGMENTS.length + 1, label: 'Finish', className: 'finish' }
@@ -1141,12 +1141,13 @@ function renderFullGame() {
     gameStatus.textContent = `${currentTeam.name} landed on Control. First team to guess gets the next turn.`;
     renderControlChallengeActions();
   } else if (gameState.phase === 'spin-bonus') {
+    const spinCategoryLabel = CATEGORY_LABELS[categoryForPosition(currentTeam.position)];
     if (!gameState.spinBonus) {
-      gameStatus.textContent = `${currentTeam.name} landed on Spin. Spin for bonus places.`;
+      gameStatus.textContent = `${currentTeam.name} landed on ${spinCategoryLabel}. Spin first, then complete that tile.`;
     } else if (gameState.spinBonus.amount === 0) {
-      gameStatus.textContent = `${currentTeam.name} spun No bonus. Continue to the next team.`;
+      gameStatus.textContent = `${currentTeam.name} spun No bonus. Complete ${spinCategoryLabel}.`;
     } else {
-      gameStatus.textContent = `${currentTeam.name} spun ${gameState.spinBonus.label}. Choose how to use it.`;
+      gameStatus.textContent = `${currentTeam.name} spun ${gameState.spinBonus.label}. Choose how to use it, then complete the tile.`;
     }
     renderBonusActions();
   } else if (gameState.lastRound) {
@@ -1209,7 +1210,7 @@ function finishFullGameRound() {
     const landedSegment = segmentForPosition(team.position);
     if (landedSegment && landedSegment.special === 'control') {
       gameState.phase = 'control';
-    } else if (landedSegment && landedSegment.special === 'spin') {
+    } else if (landedSegment && isSpinCategory(landedSegment.category)) {
       gameState.phase = 'spin-bonus';
     } else {
       passTurn();
@@ -1236,7 +1237,7 @@ function renderBonusActions() {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'text-button';
-    button.textContent = 'Continue';
+    button.textContent = 'Complete Tile';
     button.addEventListener('click', applyNoSpinBonus);
     bonusActions.appendChild(button);
     return;
@@ -1262,7 +1263,10 @@ function renderBonusActions() {
 }
 
 function applyNoSpinBonus() {
-  passTurn();
+  const currentTeam = gameState.teams[gameState.currentTeam];
+  gameState.lastRound = { message: `${currentTeam.name} spun no bonus.` };
+  gameState.phase = 'ready';
+  gameState.spinBonus = null;
   renderFullGame();
 }
 
@@ -1281,11 +1285,14 @@ function applySpinBonus(mode) {
       renderFullGame();
       return;
     }
+    gameState.lastRound = { message: `${currentTeam.name} moved forward ${amount}.` };
   } else {
     otherTeam.position = Math.max(0, otherTeam.position - amount);
+    gameState.lastRound = { message: `${otherTeam.name} moved back ${amount}.` };
   }
 
-  passTurn();
+  gameState.phase = 'ready';
+  gameState.spinBonus = null;
   renderFullGame();
 }
 
