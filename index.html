@@ -481,6 +481,113 @@
     gap: 10px;
   }
 
+  .audit-panel {
+    margin-top: 14px;
+    border-radius: 14px;
+    background: rgba(23, 32, 51, 0.08);
+    padding: 14px;
+    text-align: left;
+  }
+
+  .audit-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .audit-title {
+    color: #596174;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+  }
+
+  .audit-subtitle {
+    margin-top: 4px;
+    color: #687083;
+    font-size: 0.86rem;
+    line-height: 1.35;
+  }
+
+  .audit-score {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) 52px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  .audit-score-value {
+    display: grid;
+    min-height: 52px;
+    place-items: center;
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 1.45rem;
+    font-weight: 900;
+    box-shadow: 0 5px 14px rgba(23, 32, 51, 0.08);
+  }
+
+  .audit-stepper {
+    min-width: 52px;
+    min-height: 52px;
+    padding: 0;
+    border-radius: 12px;
+    font-size: 1.3rem;
+    letter-spacing: 0;
+  }
+
+  .audit-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  .audit-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.78);
+    padding: 9px 10px;
+  }
+
+  .audit-row.removed {
+    opacity: 0.52;
+  }
+
+  .audit-word {
+    min-width: 0;
+  }
+
+  .audit-word-main {
+    color: var(--ink);
+    font-size: 0.95rem;
+    font-weight: 850;
+    line-height: 1.2;
+    word-break: break-word;
+  }
+
+  .audit-word-meta {
+    margin-top: 2px;
+    color: #687083;
+    font-size: 0.68rem;
+    font-weight: 850;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+  }
+
+  .audit-empty {
+    color: #687083;
+    font-size: 0.86rem;
+    line-height: 1.4;
+    text-align: center;
+  }
+
   .action-button,
   .text-button {
     border: none;
@@ -546,9 +653,12 @@
     .game-actions .action-button,
     .game-actions .text-button,
     .round-actions .action-button,
-    .round-actions .text-button {
+    .round-actions .text-button,
+    .audit-row .text-button {
       width: 100%;
     }
+    .audit-header { align-items: flex-start; }
+    .audit-row { grid-template-columns: 1fr; }
     .timer { min-width: 72px; min-height: 72px; }
   }
 </style>
@@ -631,6 +741,23 @@
     <div class="round-actions">
       <button id="start" class="action-button" type="button">Start</button>
       <button id="undo" class="text-button" type="button" disabled>Undo</button>
+      <button id="audit" class="text-button" type="button">Audit</button>
+    </div>
+
+    <div id="audit-panel" class="audit-panel hidden" aria-live="polite">
+      <div class="audit-header">
+        <div>
+          <div class="audit-title">Round audit</div>
+          <div class="audit-subtitle">Score check</div>
+        </div>
+        <button id="close-audit" class="text-button" type="button">Close</button>
+      </div>
+      <div class="audit-score" aria-label="Edit round points">
+        <button id="audit-minus" class="text-button audit-stepper" type="button">-</button>
+        <div id="audit-score" class="audit-score-value">0</div>
+        <button id="audit-plus" class="text-button audit-stepper" type="button">+</button>
+      </div>
+      <div id="audit-list" class="audit-list"></div>
     </div>
   </section>
 </div>
@@ -701,7 +828,9 @@ const state = {
   words: [],
   lastAction: null,
   fullGameRound: false,
-  roundComplete: false
+  roundComplete: false,
+  scoredLog: [],
+  auditOpen: false
 };
 
 const gameState = {
@@ -742,6 +871,13 @@ const wordList = document.getElementById('word-list');
 const roundNote = document.getElementById('round-note');
 const startButton = document.getElementById('start');
 const undoButton = document.getElementById('undo');
+const auditButton = document.getElementById('audit');
+const auditPanel = document.getElementById('audit-panel');
+const closeAuditButton = document.getElementById('close-audit');
+const auditMinusButton = document.getElementById('audit-minus');
+const auditPlusButton = document.getElementById('audit-plus');
+const auditScore = document.getElementById('audit-score');
+const auditList = document.getElementById('audit-list');
 const changeSubjectButton = document.getElementById('change-subject');
 
 function createSeed() {
@@ -1228,6 +1364,8 @@ function selectSubject(subjectId, options = {}) {
   state.lastAction = null;
   state.fullGameRound = Boolean(options.fullGameRound);
   state.roundComplete = false;
+  state.scoredLog = [];
+  state.auditOpen = false;
 
   chooser.classList.add('hidden');
   fullGame.classList.add('hidden');
@@ -1247,6 +1385,7 @@ function renderRound() {
   renderTimer();
   renderScore();
   renderWords();
+  renderAudit();
 }
 
 function renderTimer() {
@@ -1258,6 +1397,7 @@ function renderScore() {
   score.textContent = state.score;
   choiceCount.textContent = state.subject.choices;
   undoButton.disabled = !state.lastAction;
+  auditButton.disabled = !state.subject;
 }
 
 function renderWords() {
@@ -1274,6 +1414,75 @@ function renderWords() {
   });
 }
 
+function renderAudit() {
+  auditPanel.classList.toggle('hidden', !state.auditOpen);
+  auditScore.textContent = state.score;
+  auditMinusButton.disabled = state.score <= 0;
+  auditList.innerHTML = '';
+
+  if (!state.scoredLog.length) {
+    const empty = document.createElement('div');
+    empty.className = 'audit-empty';
+    empty.textContent = 'No scored words yet.';
+    auditList.appendChild(empty);
+    return;
+  }
+
+  state.scoredLog.slice().reverse().forEach(entry => {
+    const row = document.createElement('div');
+    row.className = `audit-row ${entry.active ? '' : 'removed'}`;
+
+    const word = document.createElement('div');
+    word.className = 'audit-word';
+
+    const main = document.createElement('div');
+    main.className = 'audit-word-main';
+    main.textContent = entry.text;
+
+    const meta = document.createElement('div');
+    meta.className = 'audit-word-meta';
+    meta.textContent = entry.active ? entry.label : `${entry.label} removed`;
+
+    word.append(main, meta);
+    row.appendChild(word);
+
+    if (entry.canRemove) {
+      const removeButton = document.createElement('button');
+      removeButton.type = 'button';
+      removeButton.className = 'text-button';
+      removeButton.textContent = entry.active ? 'Remove' : 'Removed';
+      removeButton.disabled = !entry.active || state.score <= 0;
+      removeButton.addEventListener('click', () => removeAuditEntry(entry.id));
+      row.appendChild(removeButton);
+    }
+
+    auditList.appendChild(row);
+  });
+}
+
+function refreshRoundScoreText() {
+  renderScore();
+  renderAudit();
+
+  if (!state.roundComplete) return;
+
+  if (state.fullGameRound) {
+    const teamName = gameState.teams[gameState.currentTeam].name;
+    startButton.textContent = `Add ${state.score}`;
+    roundNote.textContent = `Time. Add ${state.score} to ${teamName}'s board position.`;
+  }
+}
+
+function makeAuditEntry(text, label, canRemove = true) {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    text,
+    label,
+    active: true,
+    canRemove
+  };
+}
+
 function startRound() {
   if (!state.subject || state.running) return;
 
@@ -1283,6 +1492,8 @@ function startRound() {
   state.score = 0;
   state.lastAction = null;
   state.roundComplete = false;
+  state.scoredLog = [];
+  state.auditOpen = false;
   state.words = drawWords(state.subject);
   startButton.disabled = true;
   roundNote.textContent = 'Click a word when your team gets it right.';
@@ -1329,13 +1540,16 @@ function scoreWord(index) {
   const previousWord = state.words[index];
   const randomCounterBefore = deckState.randomCounter;
   const nextWord = drawWord(state.subject, state.words.map(item => item.text));
+  const logEntry = makeAuditEntry(previousWord.text, CATEGORY_LABELS[previousWord.category] || previousWord.category);
   state.words[index] = nextWord;
   state.score += 1;
+  state.scoredLog.push(logEntry);
   state.lastAction = {
     index,
     previousWord,
     replacementWord: nextWord,
-    randomCounterBefore
+    randomCounterBefore,
+    logEntryId: logEntry.id
   };
   renderRound();
 }
@@ -1357,15 +1571,51 @@ function rewindDeckWord(word) {
 function undoLastScore() {
   if (!state.lastAction) return;
 
-  const { index, previousWord, replacementWord, randomCounterBefore } = state.lastAction;
+  const { index, previousWord, replacementWord, randomCounterBefore, logEntryId } = state.lastAction;
   if (Number.isInteger(randomCounterBefore)) {
     deckState.randomCounter = randomCounterBefore;
   }
   rewindDeckWord(replacementWord);
   state.words[index] = previousWord;
   state.score = Math.max(0, state.score - 1);
+  markAuditEntryRemoved(logEntryId);
   state.lastAction = null;
   renderRound();
+}
+
+function markAuditEntryRemoved(entryId) {
+  const entry = state.scoredLog.find(item => item.id === entryId);
+  if (entry) entry.active = false;
+}
+
+function removeAuditEntry(entryId) {
+  const entry = state.scoredLog.find(item => item.id === entryId);
+  if (!entry || !entry.active || state.score <= 0) return;
+
+  entry.active = false;
+  state.score = Math.max(0, state.score - 1);
+  if (state.lastAction && state.lastAction.logEntryId === entryId) {
+    state.lastAction = null;
+  }
+  refreshRoundScoreText();
+}
+
+function adjustAuditScore(delta) {
+  if (delta < 0 && state.score <= 0) return;
+
+  state.score = Math.max(0, state.score + delta);
+  state.scoredLog.push(makeAuditEntry(delta > 0 ? 'Manual +1' : 'Manual -1', 'Adjustment', false));
+  refreshRoundScoreText();
+}
+
+function toggleAudit() {
+  state.auditOpen = !state.auditOpen;
+  renderAudit();
+}
+
+function closeAudit() {
+  state.auditOpen = false;
+  renderAudit();
 }
 
 function showSubjects() {
@@ -1376,6 +1626,8 @@ function showSubjects() {
   state.lastAction = null;
   state.fullGameRound = false;
   state.roundComplete = false;
+  state.scoredLog = [];
+  state.auditOpen = false;
   chooser.classList.remove('hidden');
   fullGame.classList.add('hidden');
   round.classList.add('hidden');
@@ -1400,6 +1652,10 @@ function handleRoundBack() {
 
 startButton.addEventListener('click', handleStartButton);
 undoButton.addEventListener('click', undoLastScore);
+auditButton.addEventListener('click', toggleAudit);
+closeAuditButton.addEventListener('click', closeAudit);
+auditMinusButton.addEventListener('click', () => adjustAuditScore(-1));
+auditPlusButton.addEventListener('click', () => adjustAuditScore(1));
 changeSubjectButton.addEventListener('click', handleRoundBack);
 fullGameSubjectsButton.addEventListener('click', showSubjects);
 spinSubjectButton.addEventListener('click', spinFullGameSubject);
