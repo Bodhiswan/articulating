@@ -16,6 +16,7 @@
     --world: #264653;
     --action: #9b5de5;
     --spade: #111827;
+    --full-game: #3a86ff;
     --ink: #172033;
     --paper: #fffaf2;
     --muted: #a6adbc;
@@ -151,6 +152,10 @@
   .subject.world  { background: var(--world); }
   .subject.action { background: var(--action); }
   .subject.spade { background: var(--spade); }
+  .subject.fullgame {
+    grid-column: 1 / -1;
+    background: linear-gradient(135deg, var(--full-game), var(--nature) 48%, var(--action));
+  }
 
   .round-header {
     display: flex;
@@ -255,6 +260,28 @@
     color: #7b8292;
     background: rgba(255,255,255,0.72);
     box-shadow: none;
+  }
+
+  .word-button.full-card-word {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    text-align: left;
+  }
+
+  .word-category {
+    flex: 0 0 auto;
+    color: #596174;
+    font-size: clamp(0.68rem, 2.8vw, 0.76rem);
+    font-weight: 900;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+  }
+
+  .word-text {
+    min-width: 0;
+    text-align: right;
   }
 
   .word-button:disabled {
@@ -368,8 +395,10 @@
 <script src="words.js?v=atomic-grade12-expanded2"></script>
 <script>
 const ROUND_SECONDS = 32;
+const FULL_GAME_CATEGORIES = ['object', 'nature', 'random', 'person', 'action', 'world'];
 
 const SUBJECTS = [
+  { id: 'fullgame', label: 'Full Game (Beta)', choices: FULL_GAME_CATEGORIES.length, className: 'fullgame', fullGame: true },
   { id: 'object', label: 'Object', choices: 2, className: 'object' },
   { id: 'nature', label: 'Nature', choices: 2, className: 'nature' },
   { id: 'random', label: 'Random', choices: 2, className: 'random' },
@@ -381,6 +410,7 @@ const SUBJECTS = [
 
 const STORAGE_KEY = 'articulatingDeckStateV6';
 const WORD_CATEGORIES = Object.keys(WORDS);
+const CATEGORY_LABELS = Object.fromEntries(SUBJECTS.map(subject => [subject.id, subject.label]));
 const orderCache = new Map();
 
 const state = {
@@ -498,7 +528,7 @@ function categoryOrder(category, cycle) {
 }
 
 function warmDeckOrders(subject) {
-  const categories = subject.randomCategory ? WORD_CATEGORIES : [subject.id];
+  const categories = subject.fullGame ? FULL_GAME_CATEGORIES : subject.randomCategory ? WORD_CATEGORIES : [subject.id];
   categories.forEach(category => {
     const deck = deckState.decks[category];
     categoryOrder(category, deck.cycle);
@@ -527,8 +557,7 @@ function drawDeckWord(category) {
   return { text, category };
 }
 
-function drawWord(subject, usedWords = []) {
-  const category = pickSubjectCategory(subject);
+function drawCategoryWord(category, usedWords = []) {
   let nextWord = drawDeckWord(category);
   let guard = WORDS[category].length;
 
@@ -540,8 +569,21 @@ function drawWord(subject, usedWords = []) {
   return nextWord;
 }
 
+function drawWord(subject, usedWords = []) {
+  const category = pickSubjectCategory(subject);
+  return drawCategoryWord(category, usedWords);
+}
+
 function drawWords(subject) {
   const nextWords = [];
+
+  if (subject.fullGame) {
+    FULL_GAME_CATEGORIES.forEach(category => {
+      nextWords.push(drawCategoryWord(category, nextWords.map(item => item.text)));
+    });
+    return nextWords;
+  }
+
   for (let index = 0; index < subject.choices; index++) {
     nextWords.push(drawWord(subject, nextWords.map(item => item.text)));
   }
@@ -556,9 +598,10 @@ function renderSubjects() {
     button.className = `subject ${subject.className}`;
     button.dataset.subject = subject.id;
     const countLabel = `${subject.choices} ${subject.choices === 1 ? 'choice' : 'choices'}`;
+    const detailLabel = subject.fullGame ? `All subjects · ${countLabel}` : subject.randomCategory ? `Random · ${countLabel}` : countLabel;
     button.innerHTML = `
       <span class="subject-name">${subject.label}</span>
-      <span class="subject-count">${subject.randomCategory ? `Random · ${countLabel}` : countLabel}</span>
+      <span class="subject-count">${detailLabel}</span>
     `;
     button.addEventListener('click', () => selectSubject(subject.id));
     subjectGrid.appendChild(button);
@@ -611,10 +654,24 @@ function renderWords() {
   state.words.forEach((word, index) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `word-button ${state.running ? '' : 'ready'}`;
-    button.textContent = state.running ? word.text : 'Ready';
+    button.className = `word-button ${state.running ? '' : 'ready'} ${state.subject.fullGame && state.running ? 'full-card-word' : ''}`;
     button.disabled = !state.running;
     button.setAttribute('aria-label', state.running ? `Score ${word.text}` : 'Word hidden until round starts');
+
+    if (state.subject.fullGame && state.running) {
+      const category = document.createElement('span');
+      category.className = 'word-category';
+      category.textContent = CATEGORY_LABELS[word.category] || word.category;
+
+      const text = document.createElement('span');
+      text.className = 'word-text';
+      text.textContent = word.text;
+
+      button.append(category, text);
+    } else {
+      button.textContent = state.running ? word.text : 'Ready';
+    }
+
     button.addEventListener('click', () => scoreWord(index));
     wordList.appendChild(button);
   });
@@ -666,7 +723,12 @@ function scoreWord(index) {
 
   const previousWord = state.words[index];
   const randomCounterBefore = deckState.randomCounter;
-  const nextWord = drawWord(state.subject, state.words.map(item => item.text));
+  const usedWords = state.words
+    .filter(Boolean)
+    .map(item => item.text);
+  const nextWord = state.subject.fullGame
+    ? drawCategoryWord(previousWord.category, usedWords)
+    : drawWord(state.subject, state.words.map(item => item.text));
   state.words[index] = nextWord;
   state.score += 1;
   state.lastAction = {
