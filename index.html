@@ -359,6 +359,58 @@
     gap: 10px;
   }
 
+  .override-panel {
+    display: grid;
+    gap: 12px;
+    border-top: 1px solid rgba(23, 32, 51, 0.12);
+    padding-top: 14px;
+  }
+
+  .override-title {
+    color: #687083;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.9px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .override-turns,
+  .override-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .override-panel .text-button.active {
+    background: #172033;
+    color: #fff;
+  }
+
+  .override-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .override-team {
+    text-align: left;
+  }
+
+  .override-name {
+    color: var(--ink);
+    font-weight: 900;
+  }
+
+  .position-chip {
+    margin-top: 4px;
+    color: #687083;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
   .round-header {
     display: flex;
     align-items: center;
@@ -646,6 +698,11 @@
       text-align: center;
     }
     .spinner-copy { text-align: center; }
+    .override-row {
+      grid-template-columns: 1fr;
+      justify-items: stretch;
+    }
+    .override-team { text-align: center; }
     .game-actions .action-button,
     .game-actions .text-button,
     .round-actions .action-button,
@@ -701,9 +758,11 @@
       <div class="game-actions">
         <button id="play-round" class="action-button" type="button">Play Object</button>
         <button id="spin-subject" class="action-button" type="button" disabled>Spin Bonus</button>
+        <button id="human-override-toggle" class="text-button" type="button" aria-expanded="false" aria-controls="human-override-panel">HUMAN OVERIDE</button>
       </div>
       <div id="bonus-actions" class="bonus-actions hidden"></div>
       <div id="challenge-actions" class="challenge-actions hidden"></div>
+      <div id="human-override-panel" class="override-panel hidden" aria-label="Human override controls"></div>
     </div>
   </section>
 
@@ -841,7 +900,8 @@ const gameState = {
   spinnerRotation: 0,
   winner: null,
   phase: 'ready',
-  spinBonus: null
+  spinBonus: null,
+  humanOverrideOpen: false
 };
 
 const chooser = document.getElementById('chooser');
@@ -857,8 +917,10 @@ const spinner = document.getElementById('spinner');
 const spinnerResult = document.getElementById('spinner-result');
 const spinSubjectButton = document.getElementById('spin-subject');
 const playRoundButton = document.getElementById('play-round');
+const humanOverrideToggle = document.getElementById('human-override-toggle');
 const bonusActions = document.getElementById('bonus-actions');
 const challengeActions = document.getElementById('challenge-actions');
+const humanOverridePanel = document.getElementById('human-override-panel');
 const resetGameButton = document.getElementById('reset-game');
 const fullGameSubjectsButton = document.getElementById('full-game-subjects');
 const roundTitle = document.getElementById('round-title');
@@ -1074,6 +1136,12 @@ function segmentForPosition(position) {
   return BOARD_SEGMENTS[position - 1];
 }
 
+function labelForPosition(position) {
+  if (position <= 0) return 'Start';
+  if (position >= BOARD_SEGMENTS.length) return 'Finish';
+  return `${position}/${BOARD_SEGMENTS.length} ${CATEGORY_LABELS[categoryForPosition(position)]}`;
+}
+
 function isSpinCategory(category) {
   return category === 'action' || category === 'random';
 }
@@ -1135,6 +1203,7 @@ function renderFullGame() {
   bonusActions.innerHTML = '';
   challengeActions.classList.add('hidden');
   challengeActions.innerHTML = '';
+  renderHumanOverrideControls();
 
   if (gameState.winner) {
     gameStatus.textContent = `${gameState.winner} won. Reset to start a new game.`;
@@ -1162,6 +1231,113 @@ function renderFullGame() {
 
   playRoundButton.disabled = !['ready', 'finish'].includes(gameState.phase) || Boolean(gameState.winner);
   spinSubjectButton.disabled = gameState.phase !== 'spin-bonus' || Boolean(gameState.spinBonus) || Boolean(gameState.winner);
+}
+
+function renderHumanOverrideControls() {
+  humanOverrideToggle.setAttribute('aria-expanded', String(gameState.humanOverrideOpen));
+  humanOverridePanel.classList.toggle('hidden', !gameState.humanOverrideOpen);
+  humanOverridePanel.innerHTML = '';
+  if (!gameState.humanOverrideOpen) return;
+
+  const title = document.createElement('div');
+  title.className = 'override-title';
+  title.textContent = 'HUMAN OVERIDE';
+
+  const turnControls = document.createElement('div');
+  turnControls.className = 'override-turns';
+  gameState.teams.forEach((team, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `text-button ${index === gameState.currentTeam ? 'active' : ''}`;
+    button.textContent = `${team.name} turn`;
+    button.addEventListener('click', () => setHumanOverrideTurn(index));
+    turnControls.appendChild(button);
+  });
+
+  humanOverridePanel.append(title, turnControls);
+
+  gameState.teams.forEach((team, index) => {
+    const row = document.createElement('div');
+    row.className = 'override-row';
+
+    const label = document.createElement('div');
+    label.className = 'override-team';
+    label.innerHTML = `
+      <div class="override-name">${team.name}</div>
+      <div class="position-chip">${labelForPosition(team.position)}</div>
+    `;
+
+    const controls = document.createElement('div');
+    controls.className = 'override-controls';
+
+    const backButton = document.createElement('button');
+    backButton.type = 'button';
+    backButton.className = 'text-button';
+    backButton.textContent = '-1';
+    backButton.disabled = team.position <= 0;
+    backButton.addEventListener('click', () => adjustHumanOverridePosition(index, -1));
+
+    const forwardButton = document.createElement('button');
+    forwardButton.type = 'button';
+    forwardButton.className = 'text-button';
+    forwardButton.textContent = '+1';
+    forwardButton.disabled = team.position >= BOARD_SEGMENTS.length;
+    forwardButton.addEventListener('click', () => adjustHumanOverridePosition(index, 1));
+
+    const startButtonOverride = document.createElement('button');
+    startButtonOverride.type = 'button';
+    startButtonOverride.className = 'text-button';
+    startButtonOverride.textContent = 'Start';
+    startButtonOverride.disabled = team.position === 0;
+    startButtonOverride.addEventListener('click', () => setHumanOverridePosition(index, 0));
+
+    const finishButton = document.createElement('button');
+    finishButton.type = 'button';
+    finishButton.className = 'text-button';
+    finishButton.textContent = 'Finish';
+    finishButton.disabled = team.position >= BOARD_SEGMENTS.length;
+    finishButton.addEventListener('click', () => setHumanOverridePosition(index, BOARD_SEGMENTS.length));
+
+    controls.append(backButton, forwardButton, startButtonOverride, finishButton);
+    row.append(label, controls);
+    humanOverridePanel.appendChild(row);
+  });
+}
+
+function toggleHumanOverride() {
+  gameState.humanOverrideOpen = !gameState.humanOverrideOpen;
+  renderFullGame();
+}
+
+function applyHumanOverride(message) {
+  gameState.winner = null;
+  gameState.spinBonus = null;
+  gameState.lastRound = { message };
+  const currentTeam = gameState.teams[gameState.currentTeam];
+  gameState.phase = currentTeam.position >= BOARD_SEGMENTS.length ? 'finish' : 'ready';
+  renderFullGame();
+}
+
+function setHumanOverrideTurn(teamIndex) {
+  if (!gameState.teams[teamIndex]) return;
+
+  gameState.currentTeam = teamIndex;
+  applyHumanOverride(`HUMAN OVERIDE: ${gameState.teams[teamIndex].name} turn.`);
+}
+
+function setHumanOverridePosition(teamIndex, position) {
+  const team = gameState.teams[teamIndex];
+  if (!team) return;
+
+  team.position = Math.min(BOARD_SEGMENTS.length, Math.max(0, position));
+  applyHumanOverride(`HUMAN OVERIDE: ${team.name} moved to ${labelForPosition(team.position)}.`);
+}
+
+function adjustHumanOverridePosition(teamIndex, delta) {
+  const team = gameState.teams[teamIndex];
+  if (!team) return;
+
+  setHumanOverridePosition(teamIndex, team.position + delta);
 }
 
 function showFullGame() {
@@ -1348,6 +1524,7 @@ function resetFullGame() {
   gameState.winner = null;
   gameState.phase = 'ready';
   gameState.spinBonus = null;
+  gameState.humanOverrideOpen = false;
   state.finalSpadeRound = false;
   renderFullGame();
 }
@@ -1641,6 +1818,7 @@ function showSubjects() {
   state.roundComplete = false;
   state.scoredLog = [];
   state.auditOpen = false;
+  gameState.humanOverrideOpen = false;
   chooser.classList.remove('hidden');
   fullGame.classList.add('hidden');
   round.classList.add('hidden');
@@ -1673,6 +1851,7 @@ changeSubjectButton.addEventListener('click', handleRoundBack);
 fullGameSubjectsButton.addEventListener('click', showSubjects);
 spinSubjectButton.addEventListener('click', spinFullGameSubject);
 playRoundButton.addEventListener('click', beginFullGameRound);
+humanOverrideToggle.addEventListener('click', toggleHumanOverride);
 resetGameButton.addEventListener('click', resetFullGame);
 
 renderSubjects();
