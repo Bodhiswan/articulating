@@ -157,6 +157,197 @@
     background: linear-gradient(135deg, var(--full-game), var(--nature) 48%, var(--action));
   }
 
+  .game-stack {
+    display: grid;
+    gap: 14px;
+  }
+
+  .game-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    text-align: left;
+  }
+
+  .game-title {
+    font-size: clamp(1.45rem, 6vw, 2rem);
+    font-weight: 900;
+    line-height: 1.05;
+  }
+
+  .game-subtitle {
+    margin-top: 5px;
+    color: #687083;
+    font-size: clamp(0.82rem, 3vw, 0.95rem);
+    line-height: 1.35;
+  }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .team-card {
+    border-radius: 12px;
+    background: rgba(23, 32, 51, 0.08);
+    padding: 11px;
+    text-align: left;
+  }
+
+  .team-card.current {
+    background: rgba(58, 134, 255, 0.14);
+    box-shadow: inset 0 0 0 2px rgba(58, 134, 255, 0.35);
+  }
+
+  .team-label {
+    color: #687083;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+  }
+
+  .team-score {
+    margin-top: 4px;
+    color: var(--ink);
+    font-size: 1.5rem;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .board-track {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .board-space {
+    position: relative;
+    display: grid;
+    min-height: 34px;
+    place-items: center;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 900;
+    letter-spacing: 0.4px;
+    line-height: 1;
+    overflow: hidden;
+  }
+
+  .board-space.start,
+  .board-space.finish {
+    background: #172033;
+  }
+
+  .board-space.object { background: var(--object); }
+  .board-space.nature { background: var(--nature); }
+  .board-space.random { background: var(--random); }
+  .board-space.person { background: var(--person); }
+  .board-space.action { background: var(--action); }
+  .board-space.world { background: var(--world); }
+  .board-space.spade { background: var(--spade); }
+
+  .token-stack {
+    position: absolute;
+    inset: 3px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .token {
+    display: grid;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 900;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+  }
+
+  .token.team-0 { background: #3a86ff; }
+  .token.team-1 { background: #e63946; }
+
+  .spinner-panel {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    align-items: center;
+    gap: 16px;
+    border-radius: 14px;
+    background: rgba(23, 32, 51, 0.08);
+    padding: 14px;
+  }
+
+  .spinner-stage {
+    position: relative;
+    display: grid;
+    place-items: center;
+  }
+
+  .spinner-pointer {
+    position: absolute;
+    top: -8px;
+    z-index: 1;
+    width: 0;
+    height: 0;
+    border-left: 10px solid transparent;
+    border-right: 10px solid transparent;
+    border-top: 18px solid #172033;
+  }
+
+  .spinner {
+    width: min(132px, 35vw);
+    aspect-ratio: 1;
+    border: 6px solid #fff;
+    border-radius: 50%;
+    background:
+      conic-gradient(
+        var(--object) 0deg 51.43deg,
+        var(--nature) 51.43deg 102.86deg,
+        var(--random) 102.86deg 154.29deg,
+        var(--person) 154.29deg 205.72deg,
+        var(--action) 205.72deg 257.15deg,
+        var(--world) 257.15deg 308.58deg,
+        var(--spade) 308.58deg 360deg
+      );
+    box-shadow: 0 10px 24px rgba(23, 32, 51, 0.22);
+    transform: rotate(var(--spin-rotation, 0deg));
+    transition: transform 0.75s cubic-bezier(.2,.8,.2,1);
+  }
+
+  .spinner-copy {
+    text-align: left;
+  }
+
+  .spinner-label {
+    color: #687083;
+    font-size: 0.72rem;
+    font-weight: 900;
+    letter-spacing: 0.9px;
+    text-transform: uppercase;
+  }
+
+  .spinner-result {
+    margin-top: 5px;
+    font-size: clamp(1.25rem, 5vw, 1.7rem);
+    font-weight: 900;
+    line-height: 1.05;
+  }
+
+  .game-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
   .round-header {
     display: flex;
     align-items: center;
@@ -262,28 +453,6 @@
     box-shadow: none;
   }
 
-  .word-button.full-card-word {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 14px;
-    text-align: left;
-  }
-
-  .word-category {
-    flex: 0 0 auto;
-    color: #596174;
-    font-size: clamp(0.68rem, 2.8vw, 0.76rem);
-    font-weight: 900;
-    letter-spacing: 0.9px;
-    text-transform: uppercase;
-  }
-
-  .word-text {
-    min-width: 0;
-    text-align: right;
-  }
-
   .word-button:disabled {
     cursor: default;
     opacity: 0.62;
@@ -332,6 +501,12 @@
     transform: none;
   }
 
+  .action-button:disabled {
+    cursor: default;
+    opacity: 0.55;
+    transform: none;
+  }
+
   .hidden { display: none; }
 
   .empty-note {
@@ -344,6 +519,21 @@
   @media (max-width: 430px) {
     .subject-grid { grid-template-columns: 1fr; }
     .round-header { align-items: flex-start; }
+    .game-header { flex-direction: column; }
+    .team-grid { grid-template-columns: 1fr; }
+    .board-track { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+    .spinner-panel {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      text-align: center;
+    }
+    .spinner-copy { text-align: center; }
+    .game-actions .action-button,
+    .game-actions .text-button,
+    .round-actions .action-button,
+    .round-actions .text-button {
+      width: 100%;
+    }
     .timer { min-width: 72px; min-height: 72px; }
   }
 </style>
@@ -356,6 +546,42 @@
   <section id="chooser" class="panel" aria-labelledby="chooser-title">
     <div id="chooser-title" class="section-title">Subject</div>
     <div class="subject-grid" id="subject-grid"></div>
+  </section>
+
+  <section id="full-game" class="panel hidden" aria-labelledby="full-game-title">
+    <div class="round-topbar">
+      <button id="full-game-subjects" class="text-button" type="button">Subjects</button>
+    </div>
+
+    <div class="game-stack">
+      <div class="game-header">
+        <div>
+          <div class="round-kicker">Full game beta</div>
+          <div id="full-game-title" class="game-title">Board and spinner</div>
+          <div id="game-status" class="game-subtitle">Team 1 turn. Spin for a subject.</div>
+        </div>
+        <button id="reset-game" class="text-button" type="button">Reset</button>
+      </div>
+
+      <div id="team-grid" class="team-grid"></div>
+      <div id="board-track" class="board-track" aria-label="Full game board"></div>
+
+      <div class="spinner-panel">
+        <div class="spinner-stage" aria-hidden="true">
+          <div class="spinner-pointer"></div>
+          <div id="spinner" class="spinner"></div>
+        </div>
+        <div class="spinner-copy">
+          <div class="spinner-label">Next subject</div>
+          <div id="spinner-result" class="spinner-result">Spin first</div>
+        </div>
+      </div>
+
+      <div class="game-actions">
+        <button id="spin-subject" class="action-button" type="button">Spin</button>
+        <button id="play-round" class="action-button" type="button" disabled>Play Round</button>
+      </div>
+    </div>
   </section>
 
   <section id="round" class="panel hidden" aria-live="polite">
@@ -395,10 +621,12 @@
 <script src="words.js?v=atomic-grade12-expanded2"></script>
 <script>
 const ROUND_SECONDS = 32;
-const FULL_GAME_CATEGORIES = ['object', 'nature', 'random', 'person', 'action', 'world'];
+const GAME_SPINNER_SUBJECTS = ['object', 'nature', 'random', 'person', 'action', 'world', 'spade'];
+const BOARD_PATTERN = ['object', 'nature', 'random', 'person', 'action', 'world', 'spade'];
+const BOARD_SPACES = Array.from({ length: 28 }, (_, index) => BOARD_PATTERN[index % BOARD_PATTERN.length]);
 
 const SUBJECTS = [
-  { id: 'fullgame', label: 'Full Game (Beta)', choices: FULL_GAME_CATEGORIES.length, className: 'fullgame', fullGame: true },
+  { id: 'fullgame', label: 'Full Game (Beta)', choices: 0, className: 'fullgame', boardGame: true },
   { id: 'object', label: 'Object', choices: 2, className: 'object' },
   { id: 'nature', label: 'Nature', choices: 2, className: 'nature' },
   { id: 'random', label: 'Random', choices: 2, className: 'random' },
@@ -420,13 +648,38 @@ const state = {
   running: false,
   timerId: null,
   words: [],
-  lastAction: null
+  lastAction: null,
+  fullGameRound: false,
+  roundComplete: false
+};
+
+const gameState = {
+  active: false,
+  teams: [
+    { name: 'Team 1', position: 0 },
+    { name: 'Team 2', position: 0 }
+  ],
+  currentTeam: 0,
+  pendingSubject: null,
+  lastRound: null,
+  spinnerRotation: 0,
+  winner: null
 };
 
 const chooser = document.getElementById('chooser');
+const fullGame = document.getElementById('full-game');
 const round = document.getElementById('round');
 const subjectGrid = document.getElementById('subject-grid');
 const subtitle = document.getElementById('subtitle');
+const teamGrid = document.getElementById('team-grid');
+const boardTrack = document.getElementById('board-track');
+const gameStatus = document.getElementById('game-status');
+const spinner = document.getElementById('spinner');
+const spinnerResult = document.getElementById('spinner-result');
+const spinSubjectButton = document.getElementById('spin-subject');
+const playRoundButton = document.getElementById('play-round');
+const resetGameButton = document.getElementById('reset-game');
+const fullGameSubjectsButton = document.getElementById('full-game-subjects');
 const roundTitle = document.getElementById('round-title');
 const timer = document.getElementById('timer');
 const score = document.getElementById('score');
@@ -528,7 +781,7 @@ function categoryOrder(category, cycle) {
 }
 
 function warmDeckOrders(subject) {
-  const categories = subject.fullGame ? FULL_GAME_CATEGORIES : subject.randomCategory ? WORD_CATEGORIES : [subject.id];
+  const categories = subject.randomCategory ? WORD_CATEGORIES : [subject.id];
   categories.forEach(category => {
     const deck = deckState.decks[category];
     categoryOrder(category, deck.cycle);
@@ -577,13 +830,6 @@ function drawWord(subject, usedWords = []) {
 function drawWords(subject) {
   const nextWords = [];
 
-  if (subject.fullGame) {
-    FULL_GAME_CATEGORIES.forEach(category => {
-      nextWords.push(drawCategoryWord(category, nextWords.map(item => item.text)));
-    });
-    return nextWords;
-  }
-
   for (let index = 0; index < subject.choices; index++) {
     nextWords.push(drawWord(subject, nextWords.map(item => item.text)));
   }
@@ -598,7 +844,7 @@ function renderSubjects() {
     button.className = `subject ${subject.className}`;
     button.dataset.subject = subject.id;
     const countLabel = `${subject.choices} ${subject.choices === 1 ? 'choice' : 'choices'}`;
-    const detailLabel = subject.fullGame ? `All subjects · ${countLabel}` : subject.randomCategory ? `Random · ${countLabel}` : countLabel;
+    const detailLabel = subject.boardGame ? 'Board · spinner · teams' : subject.randomCategory ? `Random · ${countLabel}` : countLabel;
     button.innerHTML = `
       <span class="subject-name">${subject.label}</span>
       <span class="subject-count">${detailLabel}</span>
@@ -608,9 +854,155 @@ function renderSubjects() {
   });
 }
 
-function selectSubject(subjectId) {
+function getSubject(subjectId) {
+  return SUBJECTS.find(item => item.id === subjectId);
+}
+
+function renderTeams() {
+  teamGrid.innerHTML = '';
+  gameState.teams.forEach((team, index) => {
+    const card = document.createElement('div');
+    card.className = `team-card ${index === gameState.currentTeam && !gameState.winner ? 'current' : ''}`;
+    card.innerHTML = `
+      <div class="team-label">${team.name}${index === gameState.currentTeam && !gameState.winner ? ' turn' : ''}</div>
+      <div class="team-score">${team.position}/${BOARD_SPACES.length}</div>
+    `;
+    teamGrid.appendChild(card);
+  });
+}
+
+function tokenPosition(team) {
+  return team.position >= BOARD_SPACES.length ? BOARD_SPACES.length + 1 : team.position;
+}
+
+function renderBoard() {
+  boardTrack.innerHTML = '';
+  const spaces = [
+    { position: 0, label: 'Start', className: 'start' },
+    ...BOARD_SPACES.map((subjectId, index) => ({
+      position: index + 1,
+      label: CATEGORY_LABELS[subjectId].slice(0, 3),
+      className: getSubject(subjectId).className
+    })),
+    { position: BOARD_SPACES.length + 1, label: 'Finish', className: 'finish' }
+  ];
+
+  spaces.forEach(space => {
+    const tile = document.createElement('div');
+    tile.className = `board-space ${space.className}`;
+    tile.textContent = space.label;
+
+    const tokensHere = gameState.teams
+      .map((team, index) => ({ team, index }))
+      .filter(({ team }) => tokenPosition(team) === space.position);
+
+    if (tokensHere.length) {
+      const stack = document.createElement('div');
+      stack.className = 'token-stack';
+      tokensHere.forEach(({ index }) => {
+        const token = document.createElement('span');
+        token.className = `token team-${index}`;
+        token.textContent = index + 1;
+        stack.appendChild(token);
+      });
+      tile.appendChild(stack);
+    }
+
+    boardTrack.appendChild(tile);
+  });
+}
+
+function renderFullGame() {
+  renderTeams();
+  renderBoard();
+
+  const currentTeam = gameState.teams[gameState.currentTeam];
+  const pendingLabel = gameState.pendingSubject ? CATEGORY_LABELS[gameState.pendingSubject] : 'Spin first';
+  spinner.style.setProperty('--spin-rotation', `${gameState.spinnerRotation}deg`);
+  spinnerResult.textContent = pendingLabel;
+
+  if (gameState.winner) {
+    gameStatus.textContent = `${gameState.winner} reached finish. Reset to start a new game.`;
+  } else if (gameState.lastRound) {
+    gameStatus.textContent = `${gameState.lastRound.team} scored ${gameState.lastRound.score}. ${currentTeam.name} turn. Spin for a subject.`;
+  } else if (gameState.pendingSubject) {
+    gameStatus.textContent = `${currentTeam.name} turn. Play ${pendingLabel}.`;
+  } else {
+    gameStatus.textContent = `${currentTeam.name} turn. Spin for a subject.`;
+  }
+
+  spinSubjectButton.disabled = Boolean(gameState.winner);
+  playRoundButton.disabled = !gameState.pendingSubject || Boolean(gameState.winner);
+}
+
+function showFullGame() {
+  stopTimer();
+  gameState.active = true;
+  state.subject = null;
+  state.running = false;
+  state.lastAction = null;
+  state.fullGameRound = false;
+  state.roundComplete = false;
+  chooser.classList.add('hidden');
+  round.classList.add('hidden');
+  fullGame.classList.remove('hidden');
+  subtitle.textContent = 'spin, play a normal round, then move on the board';
+  renderFullGame();
+}
+
+function spinFullGameSubject() {
+  if (gameState.winner) return;
+
+  const selectedIndex = Math.floor(Math.random() * GAME_SPINNER_SUBJECTS.length);
+  const selectedSubject = GAME_SPINNER_SUBJECTS[selectedIndex];
+  const segmentDegrees = 360 / GAME_SPINNER_SUBJECTS.length;
+  gameState.pendingSubject = selectedSubject;
+  gameState.lastRound = null;
+  gameState.spinnerRotation += 720 + (GAME_SPINNER_SUBJECTS.length - selectedIndex) * segmentDegrees - (segmentDegrees / 2);
+  renderFullGame();
+}
+
+function beginFullGameRound() {
+  if (!gameState.pendingSubject || gameState.winner) return;
+  selectSubject(gameState.pendingSubject, { fullGameRound: true });
+}
+
+function finishFullGameRound() {
+  const team = gameState.teams[gameState.currentTeam];
+  const roundScore = state.score;
+  team.position = Math.min(BOARD_SPACES.length, team.position + roundScore);
+  gameState.lastRound = { team: team.name, score: roundScore };
+  gameState.pendingSubject = null;
+
+  if (team.position >= BOARD_SPACES.length) {
+    gameState.winner = team.name;
+  } else {
+    gameState.currentTeam = (gameState.currentTeam + 1) % gameState.teams.length;
+  }
+
+  showFullGame();
+}
+
+function resetFullGame() {
+  gameState.teams.forEach(team => {
+    team.position = 0;
+  });
+  gameState.currentTeam = 0;
+  gameState.pendingSubject = null;
+  gameState.lastRound = null;
+  gameState.spinnerRotation = 0;
+  gameState.winner = null;
+  renderFullGame();
+}
+
+function selectSubject(subjectId, options = {}) {
   const subject = SUBJECTS.find(item => item.id === subjectId);
   if (!subject) return;
+
+  if (subject.boardGame && !options.fullGameRound) {
+    showFullGame();
+    return;
+  }
 
   stopTimer();
   state.subject = subject;
@@ -619,10 +1011,14 @@ function selectSubject(subjectId) {
   state.running = false;
   state.words = Array.from({ length: subject.choices }, () => null);
   state.lastAction = null;
+  state.fullGameRound = Boolean(options.fullGameRound);
+  state.roundComplete = false;
 
   chooser.classList.add('hidden');
+  fullGame.classList.add('hidden');
   round.classList.remove('hidden');
-  subtitle.textContent = 'tap correct words to score and replace them';
+  subtitle.textContent = state.fullGameRound ? `${gameState.teams[gameState.currentTeam].name} round` : 'tap correct words to score and replace them';
+  changeSubjectButton.textContent = state.fullGameRound ? 'Board' : 'Subjects';
   startButton.textContent = 'Start';
   startButton.disabled = false;
   roundNote.textContent = 'Tap start when your team is ready.';
@@ -654,24 +1050,10 @@ function renderWords() {
   state.words.forEach((word, index) => {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = `word-button ${state.running ? '' : 'ready'} ${state.subject.fullGame && state.running ? 'full-card-word' : ''}`;
+    button.className = `word-button ${state.running ? '' : 'ready'}`;
     button.disabled = !state.running;
     button.setAttribute('aria-label', state.running ? `Score ${word.text}` : 'Word hidden until round starts');
-
-    if (state.subject.fullGame && state.running) {
-      const category = document.createElement('span');
-      category.className = 'word-category';
-      category.textContent = CATEGORY_LABELS[word.category] || word.category;
-
-      const text = document.createElement('span');
-      text.className = 'word-text';
-      text.textContent = word.text;
-
-      button.append(category, text);
-    } else {
-      button.textContent = state.running ? word.text : 'Ready';
-    }
-
+    button.textContent = state.running ? word.text : 'Ready';
     button.addEventListener('click', () => scoreWord(index));
     wordList.appendChild(button);
   });
@@ -685,6 +1067,7 @@ function startRound() {
   state.seconds = ROUND_SECONDS;
   state.score = 0;
   state.lastAction = null;
+  state.roundComplete = false;
   state.words = drawWords(state.subject);
   startButton.disabled = true;
   roundNote.textContent = 'Click a word when your team gets it right.';
@@ -705,9 +1088,16 @@ function endRound() {
   state.running = false;
   state.seconds = 0;
   state.lastAction = null;
+  state.roundComplete = true;
   startButton.disabled = false;
-  startButton.textContent = 'Restart';
-  roundNote.textContent = 'Time. Start again or choose another subject.';
+  if (state.fullGameRound) {
+    const teamName = gameState.teams[gameState.currentTeam].name;
+    startButton.textContent = `Add ${state.score}`;
+    roundNote.textContent = `Time. Add ${state.score} to ${teamName}'s board position.`;
+  } else {
+    startButton.textContent = 'Restart';
+    roundNote.textContent = 'Time. Start again or choose another subject.';
+  }
   renderRound();
 }
 
@@ -723,12 +1113,7 @@ function scoreWord(index) {
 
   const previousWord = state.words[index];
   const randomCounterBefore = deckState.randomCounter;
-  const usedWords = state.words
-    .filter(Boolean)
-    .map(item => item.text);
-  const nextWord = state.subject.fullGame
-    ? drawCategoryWord(previousWord.category, usedWords)
-    : drawWord(state.subject, state.words.map(item => item.text));
+  const nextWord = drawWord(state.subject, state.words.map(item => item.text));
   state.words[index] = nextWord;
   state.score += 1;
   state.lastAction = {
@@ -770,17 +1155,41 @@ function undoLastScore() {
 
 function showSubjects() {
   stopTimer();
+  gameState.active = false;
   state.subject = null;
   state.running = false;
   state.lastAction = null;
+  state.fullGameRound = false;
+  state.roundComplete = false;
   chooser.classList.remove('hidden');
+  fullGame.classList.add('hidden');
   round.classList.add('hidden');
   subtitle.textContent = 'choose a subject to start a round';
 }
 
-startButton.addEventListener('click', startRound);
+function handleStartButton() {
+  if (state.fullGameRound && state.roundComplete) {
+    finishFullGameRound();
+    return;
+  }
+  startRound();
+}
+
+function handleRoundBack() {
+  if (state.fullGameRound && gameState.active) {
+    showFullGame();
+    return;
+  }
+  showSubjects();
+}
+
+startButton.addEventListener('click', handleStartButton);
 undoButton.addEventListener('click', undoLastScore);
-changeSubjectButton.addEventListener('click', showSubjects);
+changeSubjectButton.addEventListener('click', handleRoundBack);
+fullGameSubjectsButton.addEventListener('click', showSubjects);
+spinSubjectButton.addEventListener('click', spinFullGameSubject);
+playRoundButton.addEventListener('click', beginFullGameRound);
+resetGameButton.addEventListener('click', resetFullGame);
 
 renderSubjects();
 </script>
