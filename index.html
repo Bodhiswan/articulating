@@ -678,7 +678,7 @@
       <div class="game-header">
         <div>
           <div class="round-kicker">Full game beta</div>
-          <div id="full-game-title" class="game-title">Board and spinner</div>
+          <div id="full-game-title" class="game-title">Board game</div>
           <div id="game-status" class="game-subtitle">Team 1 turn. Spin for a subject.</div>
         </div>
         <button id="reset-game" class="text-button" type="button">Reset</button>
@@ -687,7 +687,7 @@
       <div id="team-grid" class="team-grid"></div>
       <div id="board-track" class="board-track" aria-label="Full game board"></div>
 
-      <div class="spinner-panel">
+      <div id="spinner-panel" class="spinner-panel hidden">
         <div class="spinner-stage" aria-hidden="true">
           <div class="spinner-pointer"></div>
           <div id="spinner" class="spinner"></div>
@@ -852,6 +852,7 @@ const subtitle = document.getElementById('subtitle');
 const teamGrid = document.getElementById('team-grid');
 const boardTrack = document.getElementById('board-track');
 const gameStatus = document.getElementById('game-status');
+const spinnerPanel = document.getElementById('spinner-panel');
 const spinner = document.getElementById('spinner');
 const spinnerResult = document.getElementById('spinner-result');
 const spinSubjectButton = document.getElementById('spin-subject');
@@ -1128,6 +1129,7 @@ function renderFullGame() {
   const categoryLabel = isFinishPhase ? 'Finish' : currentCategory ? CATEGORY_LABELS[currentCategory] : 'Finish';
   spinner.style.setProperty('--spin-rotation', `${gameState.spinnerRotation}deg`);
   spinnerResult.textContent = gameState.spinBonus ? gameState.spinBonus.label : 'No bonus';
+  spinnerPanel.classList.toggle('hidden', gameState.phase !== 'spin-bonus');
   playRoundButton.textContent = isFinishPhase ? 'Play Spade Round' : `Play ${categoryLabel}`;
   bonusActions.classList.add('hidden');
   bonusActions.innerHTML = '';
