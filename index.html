@@ -114,6 +114,7 @@
   .subject:focus-visible,
   .action-button:focus-visible,
   .word-button:focus-visible,
+  .freeze-button:focus-visible,
   .text-button:focus-visible {
     outline: 3px solid rgba(255, 255, 255, 0.86);
     outline-offset: 3px;
@@ -121,12 +122,14 @@
 
   .subject:active,
   .word-button:active,
+  .freeze-button:active,
   .action-button:active,
   .text-button:active { transform: translateY(1px) scale(0.98); }
 
   @media (hover: hover) {
     .subject:hover,
     .word-button:hover,
+    .freeze-button:hover,
     .action-button:hover,
     .text-button:hover { filter: brightness(1.07); }
   }
@@ -492,6 +495,12 @@
     margin-bottom: 16px;
   }
 
+  .word-slot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 58px;
+    gap: 8px;
+  }
+
   .word-button {
     width: 100%;
     min-height: 58px;
@@ -510,16 +519,50 @@
     transition: transform 0.08s ease, border-color 0.2s ease, opacity 0.2s ease;
   }
 
+  .freeze-button {
+    min-height: 58px;
+    border: 0;
+    border-radius: 10px;
+    background: #172033;
+    color: #fff;
+    cursor: pointer;
+    font-size: 1.65rem;
+    font-weight: 900;
+    line-height: 1;
+    touch-action: manipulation;
+    box-shadow: 0 6px 18px rgba(23, 32, 51, 0.1);
+    transition: transform 0.08s ease, opacity 0.2s ease, filter 0.2s ease;
+  }
+
   .word-button.ready {
     color: #7b8292;
     background: rgba(255,255,255,0.72);
     box-shadow: none;
   }
 
-  .word-button:disabled {
+  .word-slot.frozen .word-button {
+    background: #05070d;
+    border-color: #05070d;
+    color: transparent;
+    opacity: 1;
+    text-shadow: none;
+  }
+
+  .word-slot.frozen .freeze-button {
+    background: #05070d;
+    opacity: 1;
+  }
+
+  .word-button:disabled,
+  .freeze-button:disabled {
     cursor: default;
     opacity: 0.62;
     transform: none;
+  }
+
+  .word-slot.frozen .word-button:disabled,
+  .word-slot.frozen .freeze-button:disabled {
+    opacity: 1;
   }
 
   .round-actions {
@@ -1081,7 +1124,7 @@ function drawWords(subject) {
   const nextWords = [];
 
   for (let index = 0; index < subject.choices; index++) {
-    nextWords.push(drawWord(subject, nextWords.map(item => item.text)));
+    nextWords.push({ ...drawWord(subject, nextWords.map(item => item.text)), frozen: false });
   }
   return nextWords;
 }
@@ -1591,14 +1634,28 @@ function renderScore() {
 function renderWords() {
   wordList.innerHTML = '';
   state.words.forEach((word, index) => {
+    const isFrozen = Boolean(word && word.frozen);
+    const slot = document.createElement('div');
+    slot.className = `word-slot ${isFrozen ? 'frozen' : ''}`;
+
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `word-button ${state.running ? '' : 'ready'}`;
-    button.disabled = !state.running;
-    button.setAttribute('aria-label', state.running ? `Score ${word.text}` : 'Word hidden until round starts');
+    button.disabled = !state.running || isFrozen;
+    button.setAttribute('aria-label', state.running ? isFrozen ? 'Frozen word' : `Score ${word.text}` : 'Word hidden until round starts');
     button.textContent = state.running ? word.text : 'Ready';
     button.addEventListener('click', () => scoreWord(index));
-    wordList.appendChild(button);
+
+    const freezeButton = document.createElement('button');
+    freezeButton.type = 'button';
+    freezeButton.className = 'freeze-button';
+    freezeButton.disabled = !state.running || !word || isFrozen;
+    freezeButton.setAttribute('aria-label', state.running && word ? `Freeze ${word.text}` : 'Freeze word');
+    freezeButton.textContent = 'X';
+    freezeButton.addEventListener('click', () => freezeWord(index));
+
+    slot.append(button, freezeButton);
+    wordList.appendChild(slot);
   });
 }
 
@@ -1691,7 +1748,7 @@ function startRound() {
   state.auditOpen = false;
   state.words = drawWords(state.subject);
   startButton.disabled = true;
-  roundNote.textContent = 'Click a word when your team gets it right.';
+  roundNote.textContent = 'Click a word when your team gets it right. Use X to freeze a spoiled card.';
   renderRound();
 
   state.timerId = window.setInterval(() => {
@@ -1737,13 +1794,13 @@ function stopTimer() {
 }
 
 function scoreWord(index) {
-  if (!state.running || !state.words[index]) return;
+  if (!state.running || !state.words[index] || state.words[index].frozen) return;
 
   const previousWord = state.words[index];
   const randomCounterBefore = deckState.randomCounter;
   const nextWord = drawWord(state.subject, state.words.map(item => item.text));
   const logEntry = makeAuditEntry(previousWord.text, CATEGORY_LABELS[previousWord.category] || previousWord.category);
-  state.words[index] = nextWord;
+  state.words[index] = { ...nextWord, frozen: false };
   state.score += 1;
   state.scoredLog.push(logEntry);
   state.lastAction = {
@@ -1753,6 +1810,13 @@ function scoreWord(index) {
     randomCounterBefore,
     logEntryId: logEntry.id
   };
+  renderRound();
+}
+
+function freezeWord(index) {
+  if (!state.running || !state.words[index] || state.words[index].frozen) return;
+
+  state.words[index] = { ...state.words[index], frozen: true };
   renderRound();
 }
 
