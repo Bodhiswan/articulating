@@ -9,13 +9,13 @@
 <title>Articulating</title>
 <style>
   :root {
-    --object: #e63946;
-    --nature: #2a9d8f;
-    --random: #f4a261;
-    --person: #e76f51;
-    --world: #264653;
-    --action: #9b5de5;
-    --spade: #111827;
+    --object: #2f86c7;
+    --nature: #2f8f4e;
+    --random: #d83b34;
+    --person: #f0c845;
+    --world: #263f88;
+    --action: #f28c28;
+    --spade: #ffffff;
     --full-game: #3a86ff;
     --ink: #172033;
     --paper: #fffaf2;
@@ -58,7 +58,7 @@
     font-weight: 900;
     letter-spacing: 2px;
     margin-bottom: 6px;
-    background: linear-gradient(90deg, #e63946, #f4a261, #2a9d8f, #9b5de5);
+    background: linear-gradient(90deg, var(--random), var(--person), var(--world), var(--action), var(--object), var(--nature));
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -155,9 +155,17 @@
   .subject.world  { background: var(--world); }
   .subject.action { background: var(--action); }
   .subject.spade { background: var(--spade); }
+  .subject.person,
+  .subject.spade {
+    color: var(--ink);
+  }
+  .subject.spade {
+    box-shadow: inset 0 0 0 2px rgba(23, 32, 51, 0.2), 0 8px 20px rgba(23, 32, 51, 0.16);
+  }
   .subject.fullgame {
     grid-column: 1 / -1;
-    background: linear-gradient(135deg, var(--full-game), var(--nature) 48%, var(--action));
+    background: linear-gradient(135deg, var(--world), var(--action) 48%, var(--nature));
+    color: #fff;
   }
 
   .game-stack {
@@ -458,6 +466,8 @@
   }
 
   .timer.warning { background: #e63946; }
+  .timer.overtime { background: var(--action); }
+  .timer.overtime.warning { background: var(--random); }
 
   .score-row {
     display: grid;
@@ -863,6 +873,7 @@
 <script src="words.js?v=atomic-grade12-expanded2"></script>
 <script>
 const ROUND_SECONDS = 32;
+const OVERTIME_SECONDS = 32;
 const BOARD_SEGMENTS = [
   { category: 'nature' },
   { category: 'random' },
@@ -909,12 +920,17 @@ const SUBJECTS = [
   { id: 'person', label: 'Person', choices: 4, className: 'person' },
   { id: 'action', label: 'Action', choices: 2, className: 'action' },
   { id: 'world', label: 'World', choices: 3, className: 'world' },
-  { id: 'spade', label: 'Spade Round', choices: 1, className: 'spade', randomCategory: true }
+  { id: 'spade', label: 'Spade', choices: 0, className: 'spade', spadeMenu: true }
 ];
+const SPADE_SUBJECTS = [
+  { id: 'spade-round', label: 'Spade Round', choices: 2, className: 'spade', randomCategory: true },
+  { id: 'spade-tile', label: 'Spade Tile', choices: 1, className: 'spade', randomCategory: true }
+];
+const ALL_SUBJECTS = [...SUBJECTS, ...SPADE_SUBJECTS];
 
 const STORAGE_KEY = 'articulatingDeckStateV6';
 const WORD_CATEGORIES = Object.keys(WORDS);
-const CATEGORY_LABELS = Object.fromEntries(SUBJECTS.map(subject => [subject.id, subject.label]));
+const CATEGORY_LABELS = Object.fromEntries(ALL_SUBJECTS.map(subject => [subject.id, subject.label]));
 const orderCache = new Map();
 
 const state = {
@@ -922,6 +938,7 @@ const state = {
   score: 0,
   seconds: ROUND_SECONDS,
   running: false,
+  overtime: false,
   timerId: null,
   words: [],
   lastAction: null,
@@ -929,7 +946,8 @@ const state = {
   finalSpadeRound: false,
   roundComplete: false,
   scoredLog: [],
-  auditOpen: false
+  auditOpen: false,
+  spadeOptionsOpen: false
 };
 
 const gameState = {
@@ -982,6 +1000,80 @@ const auditPlusButton = document.getElementById('audit-plus');
 const auditScore = document.getElementById('audit-score');
 const auditList = document.getElementById('audit-list');
 const changeSubjectButton = document.getElementById('change-subject');
+let audioContext = null;
+let stopVoice = null;
+
+function ensureAudioContext() {
+  const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextConstructor) return null;
+
+  if (!audioContext) {
+    audioContext = new AudioContextConstructor();
+  }
+  if (audioContext.state === 'suspended') {
+    audioContext.resume().catch(() => {});
+  }
+  return audioContext;
+}
+
+function pickStopVoice() {
+  if (!('speechSynthesis' in window)) return null;
+
+  const voices = window.speechSynthesis.getVoices();
+  stopVoice = voices.find(voice => /david|mark|daniel|alex|fred|guy|male/i.test(voice.name))
+    || voices.find(voice => /english|en-/i.test(`${voice.name} ${voice.lang}`))
+    || voices[0]
+    || null;
+  return stopVoice;
+}
+
+function primeStopAlarm() {
+  ensureAudioContext();
+  pickStopVoice();
+}
+
+function playStopTone() {
+  const context = ensureAudioContext();
+  if (!context) return;
+
+  const now = context.currentTime;
+  [0, 0.18].forEach(offset => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = 'square';
+    oscillator.frequency.setValueAtTime(420, now + offset);
+    gain.gain.setValueAtTime(0.0001, now + offset);
+    gain.gain.linearRampToValueAtTime(0.18, now + offset + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now + offset);
+    oscillator.stop(now + offset + 0.15);
+  });
+}
+
+function speakStop() {
+  if (!('speechSynthesis' in window)) return;
+
+  const utterance = new SpeechSynthesisUtterance('Stop');
+  utterance.lang = 'en-US';
+  utterance.pitch = 0.55;
+  utterance.rate = 0.85;
+  utterance.volume = 1;
+  const voice = stopVoice || pickStopVoice();
+  if (voice) utterance.voice = voice;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(utterance);
+}
+
+function playStopAlarm() {
+  playStopTone();
+  speakStop();
+}
+
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.addEventListener('voiceschanged', pickStopVoice);
+}
 
 function createSeed() {
   if (window.crypto && window.crypto.getRandomValues) {
@@ -1074,7 +1166,7 @@ function categoryOrder(category, cycle) {
 }
 
 function warmDeckOrders(subject) {
-  const categories = subject.randomCategory ? WORD_CATEGORIES : [subject.id];
+  const categories = subject.randomCategory ? WORD_CATEGORIES : [subject.deckCategory || subject.id];
   categories.forEach(category => {
     const deck = deckState.decks[category];
     categoryOrder(category, deck.cycle);
@@ -1082,7 +1174,7 @@ function warmDeckOrders(subject) {
 }
 
 function pickSubjectCategory(subject) {
-  if (!subject.randomCategory) return subject.id;
+  if (!subject.randomCategory) return subject.deckCategory || subject.id;
   const category = WORD_CATEGORIES[Math.floor(seededRandom(`${deckState.seed}:spade:${deckState.randomCounter}`) * WORD_CATEGORIES.length)];
   deckState.randomCounter += 1;
   return category;
@@ -1131,24 +1223,49 @@ function drawWords(subject) {
 
 function renderSubjects() {
   subjectGrid.innerHTML = '';
-  SUBJECTS.forEach(subject => {
+  const subjects = state.spadeOptionsOpen ? SPADE_SUBJECTS : SUBJECTS;
+  subjects.forEach(subject => {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = `subject ${subject.className}`;
     button.dataset.subject = subject.id;
     const countLabel = `${subject.choices} ${subject.choices === 1 ? 'choice' : 'choices'}`;
-    const detailLabel = subject.boardGame ? 'Board · spinner · teams' : subject.randomCategory ? `Random · ${countLabel}` : countLabel;
+    const detailLabel = subject.boardGame ? 'Board · spinner · teams' : subject.spadeMenu ? 'Round or tile' : subject.randomCategory ? `Random · ${countLabel}` : countLabel;
     button.innerHTML = `
       <span class="subject-name">${subject.label}</span>
       <span class="subject-count">${detailLabel}</span>
     `;
-    button.addEventListener('click', () => selectSubject(subject.id));
+    button.addEventListener('click', () => {
+      if (subject.spadeMenu) {
+        state.spadeOptionsOpen = true;
+        subtitle.textContent = 'choose the spade type';
+        renderSubjects();
+        return;
+      }
+      selectSubject(subject.id);
+    });
     subjectGrid.appendChild(button);
   });
+
+  if (state.spadeOptionsOpen) {
+    const backButton = document.createElement('button');
+    backButton.type = 'button';
+    backButton.className = 'subject fullgame';
+    backButton.innerHTML = `
+      <span class="subject-name">All Subjects</span>
+      <span class="subject-count">Back</span>
+    `;
+    backButton.addEventListener('click', () => {
+      state.spadeOptionsOpen = false;
+      subtitle.textContent = 'choose a subject to start a round';
+      renderSubjects();
+    });
+    subjectGrid.appendChild(backButton);
+  }
 }
 
 function getSubject(subjectId) {
-  return SUBJECTS.find(item => item.id === subjectId);
+  return ALL_SUBJECTS.find(item => item.id === subjectId);
 }
 
 function renderTeams() {
@@ -1388,10 +1505,12 @@ function showFullGame() {
   gameState.active = true;
   state.subject = null;
   state.running = false;
+  state.overtime = false;
   state.lastAction = null;
   state.fullGameRound = false;
   state.finalSpadeRound = false;
   state.roundComplete = false;
+  state.spadeOptionsOpen = false;
   chooser.classList.add('hidden');
   round.classList.add('hidden');
   fullGame.classList.remove('hidden');
@@ -1415,7 +1534,7 @@ function beginFullGameRound() {
   if (gameState.winner) return;
 
   if (gameState.phase === 'finish') {
-    selectSubject('spade', { fullGameRound: true, finalSpadeRound: true });
+    selectSubject('spade-round', { fullGameRound: true, finalSpadeRound: true });
     return;
   }
 
@@ -1569,11 +1688,12 @@ function resetFullGame() {
   gameState.spinBonus = null;
   gameState.humanOverrideOpen = false;
   state.finalSpadeRound = false;
+  state.overtime = false;
   renderFullGame();
 }
 
 function selectSubject(subjectId, options = {}) {
-  const subject = SUBJECTS.find(item => item.id === subjectId);
+  const subject = getSubject(subjectId);
   if (!subject) return;
 
   if (subject.boardGame && !options.fullGameRound) {
@@ -1586,6 +1706,7 @@ function selectSubject(subjectId, options = {}) {
   state.score = 0;
   state.seconds = ROUND_SECONDS;
   state.running = false;
+  state.overtime = false;
   state.words = Array.from({ length: subject.choices }, () => null);
   state.lastAction = null;
   state.fullGameRound = Boolean(options.fullGameRound);
@@ -1593,6 +1714,7 @@ function selectSubject(subjectId, options = {}) {
   state.roundComplete = false;
   state.scoredLog = [];
   state.auditOpen = false;
+  state.spadeOptionsOpen = false;
 
   chooser.classList.add('hidden');
   fullGame.classList.add('hidden');
@@ -1621,6 +1743,7 @@ function renderRound() {
 
 function renderTimer() {
   timer.textContent = state.seconds;
+  timer.classList.toggle('overtime', state.overtime);
   timer.classList.toggle('warning', state.seconds <= 10 && state.running);
 }
 
@@ -1635,6 +1758,7 @@ function renderWords() {
   wordList.innerHTML = '';
   state.words.forEach((word, index) => {
     const isFrozen = Boolean(word && word.frozen);
+    const scoreLabel = word ? state.overtime ? `Overtime score ${word.text}` : `Score ${word.text}` : 'Score word';
     const slot = document.createElement('div');
     slot.className = `word-slot ${isFrozen ? 'frozen' : ''}`;
 
@@ -1642,7 +1766,7 @@ function renderWords() {
     button.type = 'button';
     button.className = `word-button ${state.running ? '' : 'ready'}`;
     button.disabled = !state.running || isFrozen;
-    button.setAttribute('aria-label', state.running ? isFrozen ? 'Frozen word' : `Score ${word.text}` : 'Word hidden until round starts');
+    button.setAttribute('aria-label', state.running ? isFrozen ? 'Frozen word' : scoreLabel : 'Word hidden until round starts');
     button.textContent = state.running ? word.text : 'Ready';
     button.addEventListener('click', () => scoreWord(index));
 
@@ -1738,8 +1862,10 @@ function makeAuditEntry(text, label, canRemove = true) {
 function startRound() {
   if (!state.subject || state.running) return;
 
+  primeStopAlarm();
   warmDeckOrders(state.subject);
   state.running = true;
+  state.overtime = false;
   state.seconds = ROUND_SECONDS;
   state.score = 0;
   state.lastAction = null;
@@ -1754,16 +1880,31 @@ function startRound() {
   state.timerId = window.setInterval(() => {
     state.seconds -= 1;
     if (state.seconds <= 0) {
-      endRound();
+      if (state.overtime) {
+        endRound();
+      } else {
+        startOvertime();
+      }
       return;
     }
     renderTimer();
   }, 1000);
 }
 
+function startOvertime() {
+  playStopAlarm();
+  state.overtime = true;
+  state.seconds = OVERTIME_SECONDS;
+  state.lastAction = null;
+  roundNote.textContent = 'Overtime. Click each remaining word once, or use X to freeze it.';
+  renderRound();
+}
+
 function endRound() {
+  playStopAlarm();
   stopTimer();
   state.running = false;
+  state.overtime = false;
   state.seconds = 0;
   state.lastAction = null;
   state.roundComplete = true;
@@ -1798,9 +1939,16 @@ function scoreWord(index) {
 
   const previousWord = state.words[index];
   const randomCounterBefore = deckState.randomCounter;
-  const nextWord = drawWord(state.subject, state.words.map(item => item.text));
   const logEntry = makeAuditEntry(previousWord.text, CATEGORY_LABELS[previousWord.category] || previousWord.category);
-  state.words[index] = { ...nextWord, frozen: false };
+  let nextWord = null;
+
+  if (state.overtime) {
+    state.words[index] = { ...previousWord, frozen: true };
+  } else {
+    nextWord = drawWord(state.subject, state.words.map(item => item.text));
+    state.words[index] = { ...nextWord, frozen: false };
+  }
+
   state.score += 1;
   state.scoredLog.push(logEntry);
   state.lastAction = {
@@ -1808,7 +1956,8 @@ function scoreWord(index) {
     previousWord,
     replacementWord: nextWord,
     randomCounterBefore,
-    logEntryId: logEntry.id
+    logEntryId: logEntry.id,
+    overtime: state.overtime
   };
   renderRound();
 }
@@ -1876,17 +2025,20 @@ function showSubjects() {
   gameState.active = false;
   state.subject = null;
   state.running = false;
+  state.overtime = false;
   state.lastAction = null;
   state.fullGameRound = false;
   state.finalSpadeRound = false;
   state.roundComplete = false;
   state.scoredLog = [];
   state.auditOpen = false;
+  state.spadeOptionsOpen = false;
   gameState.humanOverrideOpen = false;
   chooser.classList.remove('hidden');
   fullGame.classList.add('hidden');
   round.classList.add('hidden');
   subtitle.textContent = 'choose a subject to start a round';
+  renderSubjects();
 }
 
 function handleStartButton() {
